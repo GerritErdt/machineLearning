@@ -1,0 +1,75 @@
+{
+	// See https://go.microsoft.com/fwlink/?LinkId=827846 to learn about workspace recommendations.
+	// Extension identifier format: ${publisher}.${name}. Example: vscode.csharp
+
+	// List of extensions which should be recommended for users of this workspace.
+	"recommendations": [
+		// Spell checker
+		"streetsidesoftware.code-spell-checker",
+		"streetsidesoftware.code-spell-checker-german",
+
+		// Comment highlighting
+		"ExodiusStudios.comment-anchors",
+
+		// Python linting and formatting
+		"ms-python.vscode-pylance",
+		"ms-python.pylint",
+		"ms-python.python",
+		"ms-python.debugpy",
+		"charliermarsh.ruff",
+		"ms-python.autopep8",
+
+		// JavaScript
+		"dbaeumer.vscode-eslint",
+		"esbenp.prettier-vscode",
+		
+		// HTML
+		"ms-vscode.live-server",
+		
+		// Markdown
+		"yzhang.markdown-all-in-one",
+
+		// C#
+		"ms-dotnettools.csharp",
+		"ms-dotnettools.csdevkit",
+		"csharpier.csharpier-vscode",
+		
+		// Powershell
+		"ms-vscode.powershell",
+
+		// CSV
+		"mechatroner.rainbow-csv",
+
+		// Indentation
+		"LAK132.indent-to-bracket",
+		"KevinRose.vsc-python-indent",
+
+		// Git
+		"eamodio.gitlens",
+		
+		// AI Tools
+		"GitHub.copilot",
+		"GitHub.copilot-chat",
+
+		// Theme
+		"fisheva.eva-theme",
+		"PKief.material-icon-theme",
+		
+		// Collaboration
+		"ms-vsliveshare.vsliveshare",
+		
+		// Path autocompletion
+		"ionutvmi.path-autocomplete",
+		
+		// Time tracking
+		"noorashuvo.simple-coding-time-tracker",
+		
+		// PDF viewing
+		"mathematic.vscode-pdf",
+
+	],
+	// List of extensions recommended by VS Code that should not be recommended for users of this workspace.
+	"unwantedRecommendations": [
+		
+	]
+}
