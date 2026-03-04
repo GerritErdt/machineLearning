@@ -1,191 +1,299 @@
-from torch_geometric.nn import GCNConv, global_mean_pool, global_max_pool
-from torch.nn import Linear, BatchNorm1d
 import torch
-import torch.nn.functional as F
-from torch_geometric.nn import GCNConv, global_mean_pool
-from torch_geometric.data import Batch
-from torch.utils.data import DataLoader
+import torch.nn as nn
+import torchmetrics.classification as tm
+import torch_geometric.nn as gnn
+import torch.amp as amp
+import torchviz as tv
 
+import warnings
+warnings.filterwarnings("ignore", message=".*torch-scatter.*") # otherwise, the warning spams the console after every epoch
 
-class SimpleGNN(torch.nn.Module):
-    def __init__(self, hidden_channels=16):
+class GNNModel(nn.Module):
+    def __init__(self, in_channels = 2, hidden_channels = 128, num_edge_convs = 3, out_channels = 1, dropout_rate=0.5):
         super().__init__()
-        # Einzelner Verarbeitungsstrang für ein Teleskop
-        self.conv1 = GCNConv(1, hidden_channels)
-        self.conv2 = GCNConv(hidden_channels, hidden_channels)
-        self.lin = torch.nn.Linear(hidden_channels, 2)
+        
+        self.hidden_channels = hidden_channels
+        self.num_edge_convs = num_edge_convs
+        
+        # input transformation, project from two dimensions (M1 and M2) to hidden_channels dimensions for the GNN layers
+        self.input_net = nn.Sequential(
+            nn.Linear(in_channels, hidden_channels), 
+            gnn.GraphNorm(hidden_channels),
+            nn.LeakyReLU(),
+            
+            nn.Linear(hidden_channels, hidden_channels), # no activation here, to allow for residual connections right after the input layer as well
+        )
+        
+        # GNN-layers
+        self.convs = nn.ModuleList() # GraphConv-layers
+        self.projs = nn.ModuleList() # re-projection layers
+        self.norms = nn.ModuleList() # normalization layers
+        
+        multi_aggr = gnn.aggr.MultiAggregation(["max", "mean"]) 
+        
+        for _ in range(self.num_edge_convs):
+            conv_mlp = nn.Sequential(
+                nn.Linear(2 * hidden_channels, hidden_channels),
+                nn.LeakyReLU(),
+                nn.Dropout(dropout_rate / 2),
+                
+                nn.Linear(hidden_channels, hidden_channels), # linear output without activation, to be used in residual connection
+            )
+            self.convs.append(gnn.EdgeConv(conv_mlp, aggr=multi_aggr))
+            
+            self.projs.append(nn.Sequential( # only perform linear projection to reduce dimensionality
+                nn.Linear(2 * hidden_channels, hidden_channels),
+            ))
+            
+            self.norms.append(gnn.GraphNorm(hidden_channels))
+        
+        self.final_norm = gnn.GraphNorm(hidden_channels) # final normalization before the classifier
+            
+        # classifier-Schicht
+        self.classifier = nn.Sequential(
+            nn.Linear(2 * hidden_channels, hidden_channels),
+            nn.LayerNorm(hidden_channels),
+            nn.LeakyReLU(),
+            nn.Dropout(dropout_rate),
+            
+            nn.Linear(hidden_channels, hidden_channels // 2),
+            nn.LayerNorm(hidden_channels // 2),
+            nn.LeakyReLU(),
+            nn.Dropout(dropout_rate),
+            
+            nn.Linear(hidden_channels // 2, out_channels)
+        )
+        
+        # weight initialization
+        self.apply(self._init_weights)
+        
+        # print network statistics
+        print(f"Model initialized with {self.num_edge_convs} EdgeConv layers, hidden dimension {self.hidden_channels}, and dropout rate {dropout_rate}.")
+        print(f"Total number of parameters: {sum(p.numel() for p in self.parameters())}")
+    
+    def _init_weights(self, module): 
+        if isinstance(module, nn.Linear): 
+            nn.init.kaiming_normal_(module.weight, mode="fan_in", nonlinearity="leaky_relu", a=0.01) # adapted to leaky-relu
+            if module.bias is not None: 
+                nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.BatchNorm1d):
+            nn.init.ones_(module.weight) # no normalization, to not introduce a bias in weight-change-direction
+            nn.init.zeros_(module.bias)
+    
+    def forward(self, x, edge_index, batch, num_graphs): 
+        # Eingangs-Transformation
+        x = self.input_net(x)
+        
+        # GNN-Schichten
+        for conv, proj, norm in zip(self.convs, self.projs, self.norms):
+            identity = x
+            
+            x = norm(x, batch)
+            x = nn.functional.leaky_relu(x)
+            
+            x = conv(x, edge_index)
+            x = proj(x)
+            
+            x = x + identity  # residual-connection to prevent vanishing gradient problem
+        
+        x = self.final_norm(x, batch)
+        x = nn.functional.leaky_relu(x)
+        
+        # feature pooling
+        x_max = gnn.global_max_pool(x, batch, size=num_graphs)  
+        x_mean = gnn.global_mean_pool(x, batch, size=num_graphs)
+        
+        x_pooled = torch.cat([x_max, x_mean], dim=1)  # concatenate all pooled features
+        
+        # final classification
+        out = self.classifier(x_pooled)
+        
+        return out
 
-    def forward(self, x, edge_index, batch):
-        # 1. Message Passing (Graphen-Faltung)
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-        x = self.conv2(x, edge_index)
-        x = F.relu(x)
+    def predict(self, x, edge_index, batch, num_graphs):
+        with torch.no_grad():
+            logits = self.forward(x, edge_index, batch, num_graphs)
+            probs = torch.sigmoid(logits)
+            
+        return probs
 
-        # 2. Readout Layer (Globales Pooling)
-        x = global_mean_pool(x, batch)
+    def save(self, x, edge_index, batch, num_graphs, path="./model.onnx"):
+        # 1. Device ermitteln, auf dem das Modell liegt
+        device = next(self.parameters()).device
 
-        # 3. Klassifikation
-        x = self.lin(x)
-        return x
+        # 2. Modell in den Evaluations-Modus versetzen (wichtig für Dropout/Norm-Layer)
+        self.eval()
 
+        # 3. Alle Eingangsdaten auf dieses Device schieben
+        x = x.to(device)
+        edge_index = edge_index.to(device)
+        batch = batch.to(device)
+        # num_graphs ist meist ein Integer, falls es ein Tensor ist: .to(device)
 
-class RobustSingleTelescopeGNN(torch.nn.Module):
-    def __init__(self, num_node_features=1, hidden_channels=64, dropout_rate=0.5):
-        super().__init__()
-        self.dropout_rate = dropout_rate
+        # 4. Export starten
+        torch.onnx.export(
+            self,
+            (x, edge_index, batch, num_graphs),
+            path,
+            export_params=True,
+            opset_version=14,
+            input_names=['x', 'edge_index', 'batch', 'num_graphs'],
+            output_names=['output'],
+            dynamic_axes={
+                'x': {0: 'num_nodes'},
+                'edge_index': {1: 'num_edges'},
+                'batch': {0: 'num_nodes'}
+            }
+        )
+        print(f"Modell erfolgreich unter {path} gespeichert.")
 
-        # 1. Convolutional Block
-        self.conv1 = GCNConv(num_node_features, hidden_channels)
-        self.bn1 = BatchNorm1d(hidden_channels)
+def get_parameter_groups(model, weight_decay): 
+    decay = []
+    no_decay = []
+    
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        
+        if param.ndim <= 1 or name.endswith(".bias"):
+            no_decay.append(param)
+        else: 
+            decay.append(param)
+    
+    return [
+        {"params": decay, "weight_decay": weight_decay},
+        {"params": no_decay, "weight_decay": 0.0}
+    ]
 
-        # 2. Convolutional Block
-        self.conv2 = GCNConv(hidden_channels, hidden_channels)
-        self.bn2 = BatchNorm1d(hidden_channels)
-
-        # 3. Convolutional Block
-        self.conv3 = GCNConv(hidden_channels, hidden_channels)
-        self.bn3 = BatchNorm1d(hidden_channels)
-
-        # Klassifikator: Input ist 2 * hidden_channels (wegen Mean + Max Pooling)
-        self.lin1 = Linear(hidden_channels * 2, hidden_channels)
-        self.bn_lin = BatchNorm1d(hidden_channels)
-        self.lin2 = Linear(hidden_channels, 2)
-
-    def forward(self, x, edge_index, batch):
-        # Block 1
-        x = self.conv1(x, edge_index)
-        x = self.bn1(x)
-        x = F.relu(x)
-        x = F.dropout(x, p=self.dropout_rate, training=self.training)
-
-        # Block 2
-        x = self.conv2(x, edge_index)
-        x = self.bn2(x)
-        x = F.relu(x)
-        x = F.dropout(x, p=self.dropout_rate, training=self.training)
-
-        # Block 3
-        x = self.conv3(x, edge_index)
-        x = self.bn3(x)
-        x = F.relu(x)
-        # Kein Dropout direkt vor dem Pooling, um keine wichtigen Graphen-Features zu nullen
-
-        # Readout: Kombination aus Durchschnitt und Maximum
-        x_mean = global_mean_pool(x, batch)
-        x_max = global_max_pool(x, batch)
-        x = torch.cat([x_mean, x_max], dim=1)
-
-        # MLP Classifier
-        x = self.lin1(x)
-        x = self.bn_lin(x)
-        x = F.relu(x)
-        x = F.dropout(x, p=self.dropout_rate, training=self.training)
-        x = self.lin2(x)
-
-        return x
-
-
-def train_robust_model_m1(train_dataset, test_dataset, num_epochs=30, batch_size=64):
-    # Dataloader Setup bleibt identisch
-    from torch.utils.data import DataLoader
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=m1_collate)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=m1_collate)
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = RobustSingleTelescopeGNN(hidden_channels=64, dropout_rate=0.5).to(device)
-
-    # Reduzierte Lernrate (0.001) und L2-Regularisierung (weight_decay)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)
-    criterion = torch.nn.CrossEntropyLoss()
-
-    # ... (Trainings- und Testschleife bleiben exakt wie im vorherigen Beispiel)
-
-def m1_collate(data_list):
-    # Entpackt (graph_m1, graph_m2, y) und verwirft graph_m2
-    m1_list = [item[0] for item in data_list]
-    y_list = [item[2] for item in data_list]
-
-    return Batch.from_data_list(m1_list), torch.tensor(y_list, dtype=torch.long)
-
-
-def train_model_m1(train_dataset, test_dataset, num_epochs=10, batch_size=32):
-    # Dataloader für Training und Test
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        collate_fn=m1_collate
-    )
-
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        shuffle=False,  # Testdaten müssen nicht gemischt werden
-        collate_fn=m1_collate
-    )
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = RobustSingleTelescopeGNN(hidden_channels=64, dropout_rate=0.5).to(device)
-
-    # Reduzierte Lernrate (0.001) und L2-Regularisierung (weight_decay)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)
-    criterion = torch.nn.CrossEntropyLoss()
-
-    for epoch in range(num_epochs):
-        # --- TRAININGS-PHASE ---
+# TODO: include validation data
+def learn(model, train_loader, test_loader, epochs=10, lr_start=1e-4, lr_patience=3, l2_reg=5e-4, pos_weight=1.0):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # auto-detect GPU-availability
+    model = model.to(device) 
+    scaler = amp.GradScaler(enabled=(device.type == 'cuda'))  # automatic mixed precision for faster training on GPU
+    weight_tensor = torch.tensor([pos_weight], dtype=torch.float32).to(device)
+    
+    criterion = nn.BCEWithLogitsLoss(pos_weight=weight_tensor)
+    param_groups = get_parameter_groups(model, l2_reg)
+    optimizer = torch.optim.AdamW(param_groups, lr=lr_start) 
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=lr_patience) # TODO: LR scheduler needs to run on validation data not test data
+    
+    metrics_train = {
+        "accuracy": tm.BinaryAccuracy().to(device),
+        "precision": tm.BinaryPrecision().to(device),
+        "recall": tm.BinaryRecall().to(device),
+        "f1": tm.BinaryF1Score().to(device),
+        "roc": tm.BinaryAUROC().to(device)
+    }
+    
+    metrics_test = {
+        "accuracy": tm.BinaryAccuracy().to(device),
+        "precision": tm.BinaryPrecision().to(device),
+        "recall": tm.BinaryRecall().to(device),
+        "f1": tm.BinaryF1Score().to(device),
+        "roc": tm.BinaryAUROC().to(device)
+    }
+    
+    history = {
+        "train_loss": [], "test_loss": [],
+        "train_accuracy": [], "test_accuracy": [],
+        "train_precision": [], "test_precision": [],
+        "train_recall": [], "test_recall": [],
+        "train_f1": [], "test_f1": [],
+        "train_roc": [], "test_roc": []
+    }
+    
+    for epoch in range(epochs):
         model.train()
-        train_loss = 0
-        train_correct = 0
-        train_samples = 0
+        total_train_loss = 0
+        total_train_samples = 0
+        
+        # collect metrics outside of the batch loop for performance reasons
+        epoch_train_logits = []
+        epoch_train_targets = []
+        
+        for batch in train_loader:
+            batch = batch.to(device)
+            optimizer.zero_grad(set_to_none=True)
+            
+            with torch.autocast(device_type=device.type, enabled=(device.type == 'cuda'), dtype=torch.float16):  # automatic mixed precision for faster training on GPU                           
+                out = model(batch.x, batch.edge_index, batch.batch, batch.num_graphs)
+                logits = out.view(-1)
+                targets = batch.y.view(-1).float()
+                
+                loss = criterion(logits, targets)
+            
+            total_train_loss += loss.item() * batch.num_graphs
+            total_train_samples += batch.num_graphs
+            
+            scaler.scale(loss).backward()
+            
+            scaler.unscale_(optimizer)  
+            nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.75)  # gradient Clipping to prevent exploding/excessive gradients at the beginning of training
+            
+            scaler.step(optimizer)
+            scaler.update()
+            
+            epoch_train_logits.append(logits.detach())
+            epoch_train_targets.append(targets.detach())
+        
+        all_train_logits = torch.cat(epoch_train_logits)
+        all_train_targets = torch.cat(epoch_train_targets).long()
+        all_train_probs = torch.sigmoid(all_train_logits)
+        
+        for metric in metrics_train.values():
+            metric.update(all_train_probs, all_train_targets)
+    
+        # evaluation on testset after each epoch
+        model.eval()
+        total_test_loss = 0
+        total_test_samples = 0
+        
+        # collect metrics outside of the batch loop for performance reasons
+        epoch_val_logits = []
+        epoch_val_targets = []
+        
+        with torch.no_grad():
+            for batch in test_loader: 
+                batch = batch.to(device)
+                out = model(batch.x, batch.edge_index, batch.batch, batch.num_graphs)
+                
+                logits = out.view(-1)
+                targets = batch.y.view(-1).float()
+                
+                loss = criterion(logits, targets)
+                total_test_loss += loss.item() * batch.num_graphs
+                total_test_samples += batch.num_graphs
+                
+                epoch_val_logits.append(logits)
+                epoch_val_targets.append(targets)
+        
+        all_val_logits = torch.cat(epoch_val_logits)
+        all_val_targets = torch.cat(epoch_val_targets).long()
+        all_val_probs = torch.sigmoid(all_val_logits)
+        
+        for metric in metrics_test.values():
+            metric.update(all_val_probs, all_val_targets)
+        
+        epoch_train_loss = total_train_loss / total_train_samples
+        epoch_test_loss = total_test_loss / total_test_samples
+        
+        history["train_loss"].append(epoch_train_loss)
+        history["test_loss"].append(epoch_test_loss)
+        
+        for key in metrics_train.keys():
+            history[f"train_{key}"].append(metrics_train[key].compute().item())
+            metrics_train[key].reset()
+            
+            history[f"test_{key}"].append(metrics_test[key].compute().item())
+            metrics_test[key].reset()
+        
+        print(f"Epoch {epoch+1:03d}/{epochs:03d} | "
+              f"Train Loss: {epoch_train_loss:.4f} | Test Loss: {epoch_test_loss:.4f} | "
+              f"Test Acc: {history['test_accuracy'][-1]:.4f} | Test F1: {history['test_f1'][-1]:.4f} | LR: {optimizer.param_groups[0]['lr']:.6f}")
 
-        for batch_m1, labels in train_loader:
-            batch_m1 = batch_m1.to(device)
-            labels = labels.to(device)
+        scheduler.step(epoch_test_loss)
+    
+    return model, history
 
-            optimizer.zero_grad()
-            out = model(batch_m1.x, batch_m1.edge_index, batch_m1.batch)
-            loss = criterion(out, labels)
-            loss.backward()
-            optimizer.step()
-
-            train_loss += loss.item()
-            preds = out.argmax(dim=1)
-            train_correct += int((preds == labels).sum())
-            train_samples += labels.size(0)
-
-        avg_train_loss = train_loss / len(train_loader)
-        train_acc = train_correct / train_samples
-
-        # --- TEST-PHASE ---
-        model.eval()  # Schaltet Dropout/BatchNorm auf Evaluierungsmodus (falls vorhanden)
-        test_loss = 0
-        test_correct = 0
-        test_samples = 0
-
-        with torch.no_grad():  # Deaktiviert die Gradientenberechnung für Speichereffizienz
-            for batch_m1, labels in test_loader:
-                batch_m1 = batch_m1.to(device)
-                labels = labels.to(device)
-
-                out = model(batch_m1.x, batch_m1.edge_index, batch_m1.batch)
-                loss = criterion(out, labels)
-
-                test_loss += loss.item()
-                preds = out.argmax(dim=1)
-                test_correct += int((preds == labels).sum())
-                test_samples += labels.size(0)
-
-        avg_test_loss = test_loss / len(test_loader)
-        test_acc = test_correct / test_samples
-
-        # Ausgabe pro Epoche
-        print(f'Epoch: {epoch+1:02d} | '
-              f'Train Loss: {avg_train_loss:.4f}, Train Acc: {train_acc:.4f} | '
-              f'Test Loss: {avg_test_loss:.4f}, Test Acc: {test_acc:.4f}')
-
-    return model
-
-# Aufruf in deiner main.py:
-# train_dataset, test_dataset = dl.get_stereo_clean_dataset()
-# model = train_model_m1(train_dataset, test_dataset)
+if __name__ == "__main__":
+    model = GNNModel()

@@ -1,11 +1,24 @@
-from models import model
-import dataLoading.dataLoading as dl
+from src.models import model
+import src.dataLoading.data_loading as dl
+import src.helperFunctions.helper_functions as hf
 
 def main():
-    m1_train, m1_test = dl.get_stereo_clean_dataset(20000)
-    # mlModel = model.train_model_m1(m1_train, m1_test, 30)
-    model.train_model_m1(m1_train, m1_test, num_epochs=30, batch_size=64)
+    hf.set_all_seeds()
+    train_loader, test_loader, pos_weight_val = dl.get_stereo_clean_dataset(75000, batch_size=128)
+    
+    ml_model = model.GNNModel()
+    trained_model, history = model.learn(ml_model, train_loader, test_loader, 25, pos_weight=pos_weight_val)
 
-
+    batch_data = next(iter(test_loader))
+    ml_model.save(
+        batch_data.x,
+        batch_data.edge_index,
+        batch_data.batch,
+        batch_data.num_graphs,
+        path="./model.onnx"
+    )
+        
+    hf.plot_history(history)
+        
 if __name__ == "__main__":
     main()
