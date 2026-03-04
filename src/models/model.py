@@ -8,7 +8,7 @@ import warnings
 warnings.filterwarnings("ignore", message=".*torch-scatter.*") # otherwise, the warning spams the console after every epoch
 
 class GNNModel(nn.Module):
-    def __init__(self, in_channels = 2, hidden_channels = 128, num_edge_convs = 4, out_channels = 1, dropout_rate=0.5):
+    def __init__(self, in_channels = 2, hidden_channels = 128, num_edge_convs = 3, out_channels = 1, dropout_rate=0.5):
         super().__init__()
         
         self.hidden_channels = hidden_channels
@@ -34,11 +34,11 @@ class GNNModel(nn.Module):
             conv_mlp = nn.Sequential(
                 nn.Linear(2 * hidden_channels, hidden_channels),
                 nn.LeakyReLU(),
-                nn.Dropout(dropout_rate),
+                nn.Dropout(dropout_rate / 2),
                 
                 nn.Linear(hidden_channels, hidden_channels),
                 nn.LeakyReLU(),
-                nn.Dropout(dropout_rate),
+                nn.Dropout(dropout_rate / 2),
                 
                 nn.Linear(hidden_channels, hidden_channels), # linear output without activation, to be used in residual connection
             )
@@ -64,17 +64,7 @@ class GNNModel(nn.Module):
             nn.LeakyReLU(),
             nn.Dropout(dropout_rate),
             
-            nn.Linear(hidden_channels, hidden_channels // 2),
-            nn.LayerNorm(hidden_channels // 2),
-            nn.LeakyReLU(),
-            nn.Dropout(dropout_rate),
-            
-            nn.Linear(hidden_channels // 2, hidden_channels // 4),
-            nn.LayerNorm(hidden_channels // 4),
-            nn.LeakyReLU(),
-            nn.Dropout(dropout_rate),
-            
-            nn.Linear(hidden_channels // 2, out_channels)
+            nn.Linear(hidden_channels, out_channels)
         )
         
         # weight initialization
@@ -129,37 +119,6 @@ class GNNModel(nn.Module):
             probs = torch.sigmoid(logits)
             
         return probs
-
-    def save(self, x, edge_index, batch, num_graphs, path="./model.onnx"):
-        # 1. Device ermitteln, auf dem das Modell liegt
-        device = next(self.parameters()).device
-
-        # 2. Modell in den Evaluations-Modus versetzen (wichtig für Dropout/Norm-Layer)
-        self.eval()
-
-        # 3. Alle Eingangsdaten auf dieses Device schieben
-        x = x.to(device)
-        edge_index = edge_index.to(device)
-        batch = batch.to(device)
-        # num_graphs ist meist ein Integer, falls es ein Tensor ist: .to(device)
-
-        # 4. Export starten
-        torch.onnx.export(
-            self,
-            (x, edge_index, batch, num_graphs),
-            path,
-            export_params=True,
-            opset_version=14,
-            input_names=['x', 'edge_index', 'batch', 'num_graphs'],
-            output_names=['output'],
-            dynamic_axes={
-                'x': {0: 'num_nodes'},
-                'edge_index': {1: 'num_edges'},
-                'batch': {0: 'num_nodes'}
-            }
-        )
-        print(f"Modell erfolgreich unter {path} gespeichert.")
-
 
 def get_parameter_groups(model, weight_decay): 
     decay = []
