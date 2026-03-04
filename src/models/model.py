@@ -8,7 +8,7 @@ import warnings
 warnings.filterwarnings("ignore", message=".*torch-scatter.*") # otherwise, the warning spams the console after every epoch
 
 class GNNModel(nn.Module):
-    def __init__(self, in_channels = 5, hidden_channels = 128, num_edge_convs = 3, out_channels = 1, dropout_rate=0.5):
+    def __init__(self, in_channels = 4, hidden_channels = 128, num_edge_convs = 3, out_channels = 1, dropout_rate=0.5):
         super().__init__()
         
         self.hidden_channels = hidden_channels
@@ -135,16 +135,16 @@ def get_parameter_groups(model, weight_decay):
     ]
 
 def get_input_importance(model, test_loader, history, device):
-    print("\nBerechne feature-importance")
+    print("\nCalculating feature-importance")
     model.eval()
     num_features = test_loader.dataset[0].x.shape[1]
     
-    baseline_roc = history["test_roc"][-1]
+    baseline_f1 = history["test_f1"][-1]
     feature_importances = []
     
     with torch.no_grad():
         for feature_idx in range(num_features):
-            perm_metric = tm.BinaryAUROC().to(device)
+            perm_metric = tm.BinaryF1Score().to(device)
 
             for batch in test_loader:
                 batch = batch.to(device)
@@ -164,17 +164,83 @@ def get_input_importance(model, test_loader, history, device):
                 perm_metric.update(probs, targets)
 
             # 4. Leistungsabfall berechnen
-            perm_roc = perm_metric.compute().item()
-            importance = baseline_roc - perm_roc
+            perm_f1 = perm_metric.compute().item()
+            importance = baseline_f1 - perm_f1
             feature_importances.append(importance)
 
-            print(f"Feature {feature_idx}: Wichtigkeit (Delta ROC AUC) = {importance:.4f}")
+            print(f"Feature {feature_idx}: Importance (Delta F1) = {importance:.4f}")
     
     history["feature_importances"] = feature_importances
-    print("Feature-Importance Berechnung abgeschlossen.\n")
+    print("Feature-Importance calculation finished.\n")
 
-# TODO: include validation data
-def learn(model, train_loader, test_loader, epochs=10, lr_start=1e-4, lr_patience=3, l2_reg=5e-1, pos_weight=1.0):
+def grade_model(model, data_loader, device, history, metrics, prefix, criterion):
+    model.eval()
+    
+    total_loss = 0
+    total_samples = 0
+    
+    with torch.no_grad():
+        for batch in data_loader:
+            batch = batch.to(device)
+            out = model(batch.x, batch.edge_index, batch.batch, batch.num_graphs)
+            
+            batch_logits = out.view(-1)
+            batch_targets = batch.y.view(-1).float()
+            
+            loss = criterion(batch_logits, batch_targets)
+            total_loss += loss.item() * batch.num_graphs
+            total_samples += batch.num_graphs
+            
+            batch_probs = torch.sigmoid(batch_logits)
+            for metric in metrics.values():
+                metric.update(batch_probs, batch_targets.long())
+    
+    avg_loss = total_loss / total_samples
+    history[f"{prefix}_loss"].append(avg_loss)
+    
+    for key, metric in metrics.items():
+        history[f"{prefix}_{key}"].append(metric.compute().item())
+        metric.reset()
+
+def train_one_epoch(model, data_loader, device, history, metrics, optimizer, scaler, criterion):
+    model.train()
+    total_loss = 0
+    total_samples = 0
+    
+    for batch in data_loader:
+        batch = batch.to(device)
+        optimizer.zero_grad(set_to_none=True)
+        
+        with torch.autocast(device_type=device.type, enabled=(device.type == 'cuda'), dtype=torch.float16):  # automatic mixed precision for faster training on GPU                           
+            out = model(batch.x, batch.edge_index, batch.batch, batch.num_graphs)
+            logits = out.view(-1)
+            targets = batch.y.view(-1).float()
+            
+            loss = criterion(logits, targets)
+        
+        total_loss += loss.item() * batch.num_graphs
+        total_samples += batch.num_graphs
+        
+        scaler.scale(loss).backward()
+        
+        scaler.unscale_(optimizer)  
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.75)  # gradient Clipping to prevent exploding/excessive gradients at the beginning of training
+        
+        scaler.step(optimizer)
+        scaler.update()
+        
+        probs = torch.sigmoid(logits).detach()
+        for metric in metrics.values():
+            metric.update(probs, targets.long())
+    
+    avg_loss = total_loss / total_samples
+    history['train_loss'].append(avg_loss)
+    
+    for key, metric in metrics.items():
+        history[f"train_{key}"].append(metric.compute().item())
+        metric.reset()
+
+def learn(model, train_loader, test_loader, val_loader, epochs=10, lr_start=1e-4, lr_patience=3, l2_reg=5e-1, pos_weight=1.0):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # auto-detect GPU-availability
     model = model.to(device) 
     scaler = amp.GradScaler(enabled=(device.type == 'cuda'))  # automatic mixed precision for faster training on GPU
@@ -183,123 +249,48 @@ def learn(model, train_loader, test_loader, epochs=10, lr_start=1e-4, lr_patienc
     criterion = nn.BCEWithLogitsLoss(pos_weight=weight_tensor)
     param_groups = get_parameter_groups(model, l2_reg)
     optimizer = torch.optim.AdamW(param_groups, lr=lr_start) 
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=lr_patience) # TODO: LR scheduler needs to run on validation data not test data
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=lr_patience) 
     
     metrics_train = {
-        "accuracy": tm.BinaryAccuracy().to(device),
         "precision": tm.BinaryPrecision().to(device),
         "recall": tm.BinaryRecall().to(device),
         "f1": tm.BinaryF1Score().to(device),
-        "roc": tm.BinaryAUROC().to(device)
+    }
+    
+    metrics_val = {
+        "precision": tm.BinaryPrecision().to(device),
+        "recall": tm.BinaryRecall().to(device),
+        "f1": tm.BinaryF1Score().to(device),
     }
     
     metrics_test = {
-        "accuracy": tm.BinaryAccuracy().to(device),
         "precision": tm.BinaryPrecision().to(device),
         "recall": tm.BinaryRecall().to(device),
         "f1": tm.BinaryF1Score().to(device),
-        "roc": tm.BinaryAUROC().to(device)
     }
     
     history = {
-        "train_loss": [], "test_loss": [],
-        "train_accuracy": [], "test_accuracy": [],
-        "train_precision": [], "test_precision": [],
-        "train_recall": [], "test_recall": [],
-        "train_f1": [], "test_f1": [],
-        "train_roc": [], "test_roc": []
+        "train_loss": [], "val_loss": [], "test_loss": [],
+        "train_precision": [], "val_precision": [], "test_precision": [],
+        "train_recall": [], "val_recall": [], "test_recall": [],
+        "train_f1": [], "val_f1": [], "test_f1": [],
     }
     
     for epoch in range(epochs):
-        model.train()
-        total_train_loss = 0
-        total_train_samples = 0
-        
-        # collect metrics outside of the batch loop for performance reasons
-        epoch_train_logits = []
-        epoch_train_targets = []
-        
-        for batch in train_loader:
-            batch = batch.to(device)
-            optimizer.zero_grad(set_to_none=True)
-            
-            with torch.autocast(device_type=device.type, enabled=(device.type == 'cuda'), dtype=torch.float16):  # automatic mixed precision for faster training on GPU                           
-                out = model(batch.x, batch.edge_index, batch.batch, batch.num_graphs)
-                logits = out.view(-1)
-                targets = batch.y.view(-1).float()
-                
-                loss = criterion(logits, targets)
-            
-            total_train_loss += loss.item() * batch.num_graphs
-            total_train_samples += batch.num_graphs
-            
-            scaler.scale(loss).backward()
-            
-            scaler.unscale_(optimizer)  
-            nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.75)  # gradient Clipping to prevent exploding/excessive gradients at the beginning of training
-            
-            scaler.step(optimizer)
-            scaler.update()
-            
-            epoch_train_logits.append(logits.detach())
-            epoch_train_targets.append(targets.detach())
-        
-        all_train_logits = torch.cat(epoch_train_logits)
-        all_train_targets = torch.cat(epoch_train_targets).long()
-        all_train_probs = torch.sigmoid(all_train_logits)
-        
-        for metric in metrics_train.values():
-            metric.update(all_train_probs, all_train_targets)
+        train_one_epoch(model, train_loader, device, history, metrics_train, optimizer, scaler, criterion)
     
-        # evaluation on testset after each epoch
-        model.eval()
-        total_test_loss = 0
-        total_test_samples = 0
-        
-        # collect metrics outside of the batch loop for performance reasons
-        epoch_val_logits = []
-        epoch_val_targets = []
-        
-        with torch.no_grad():
-            for batch in test_loader: 
-                batch = batch.to(device)
-                out = model(batch.x, batch.edge_index, batch.batch, batch.num_graphs)
-                
-                logits = out.view(-1)
-                targets = batch.y.view(-1).float()
-                
-                loss = criterion(logits, targets)
-                total_test_loss += loss.item() * batch.num_graphs
-                total_test_samples += batch.num_graphs
-                
-                epoch_val_logits.append(logits)
-                epoch_val_targets.append(targets)
-        
-        all_val_logits = torch.cat(epoch_val_logits)
-        all_val_targets = torch.cat(epoch_val_targets).long()
-        all_val_probs = torch.sigmoid(all_val_logits)
-        
-        for metric in metrics_test.values():
-            metric.update(all_val_probs, all_val_targets)
-        
-        epoch_train_loss = total_train_loss / total_train_samples
-        epoch_test_loss = total_test_loss / total_test_samples
-        
-        history["train_loss"].append(epoch_train_loss)
-        history["test_loss"].append(epoch_test_loss)
-        
-        for key in metrics_train.keys():
-            history[f"train_{key}"].append(metrics_train[key].compute().item())
-            metrics_train[key].reset()
-            
-            history[f"test_{key}"].append(metrics_test[key].compute().item())
-            metrics_test[key].reset()
+        # evaluation on val data after each epoch
+        grade_model(model, val_loader, device, history, metrics_val, "val", criterion)
         
         print(f"Epoch {epoch+1:03d}/{epochs:03d} | "
-              f"Train Loss: {epoch_train_loss:.4f} | Test Loss: {epoch_test_loss:.4f} | "
-              f"Test Acc: {history['test_accuracy'][-1]:.4f} | Test F1: {history['test_f1'][-1]:.4f} | LR: {optimizer.param_groups[0]['lr']:.6f}")
+              f"Train Loss: {history['train_loss'][-1]:.4f} | Val Loss: {history['val_loss'][-1]:.4f} | "
+              f"Val F1: {history['val_f1'][-1]:.4f} | LR: {optimizer.param_groups[0]['lr']:.6f}")
 
-        scheduler.step(epoch_test_loss)
+        scheduler.step(history['val_loss'][-1])  
+    
+    # final evaluation on test data after training
+    grade_model(model, test_loader, device, history, metrics_test, "test", criterion)
+    print(f"\nFinal Test Loss: {history['test_loss'][-1]:.4f} | Test F1: {history['test_f1'][-1]:.4f}")
     
     get_input_importance(model, test_loader, history, device)
     
@@ -307,3 +298,4 @@ def learn(model, train_loader, test_loader, epochs=10, lr_start=1e-4, lr_patienc
 
 if __name__ == "__main__":
     model = GNNModel()
+    

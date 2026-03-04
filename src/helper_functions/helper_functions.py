@@ -65,7 +65,7 @@ def plot_fused_magic_graph(data, label_name="Event"):
     plt.show()
 
 def show_many_graphs():
-    train_loader, _, _= dl.get_stereo_clean_dataset(num_samples=100)
+    train_loader, _, _, _= dl.get_stereo_clean_dataset(num_samples=100)
     train_dataset = train_loader.dataset
     edge_index, pos = dl.compute_camera_topology()
 
@@ -112,34 +112,37 @@ def plot_histograms_for_telescopes():
 
     plt.tight_layout()
     plt.show()
-    
-    import matplotlib.pyplot as plt
-
 
 def plot_history(history, feature_names=None):
-    # Definition der Metriken und ihrer Anzeigenamen
+    # Definition der verbleibenden Metriken
     metrics = [
         ("loss", "Loss"),
-        ("accuracy", "Accuracy"),
         ("f1", "F1-Score"),
         ("precision", "Precision"),
-        ("recall", "Recall"),
-        ("roc", "ROC-AUC")
+        ("recall", "Recall")
     ]
 
     epochs = range(1, len(history["train_loss"]) + 1)
+    last_epoch = epochs[-1]
 
-    # Erstelle ein 2x4 Raster für insgesamt 7 Plots
-    fig, axes = plt.subplots(2, 4, figsize=(20, 10))
+    # Erstelle ein 2x3 Raster für insgesamt 5 benötigte Plots
+    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
     axes = axes.flatten()
 
-    # Zeitreihen für die Trainingsmetriken plotten
+    # Zeitreihen für die Trainings- und Validierungsmetriken plotten
     for i, (key, title) in enumerate(metrics):
         train_vals = history[f"train_{key}"]
-        test_vals = history[f"test_{key}"]
+        val_vals = history[f"val_{key}"]
 
+        # Testwert ist nur am Ende vorhanden (letztes/einziges Element der Liste)
+        test_val = history[f"test_{key}"][-1]
+
+        # Train und Val als durchgehende Linien
         axes[i].plot(epochs, train_vals, label='Train', marker='o', markersize=4, linewidth=1.5)
-        axes[i].plot(epochs, test_vals, label='Test', marker='x', markersize=4, linewidth=1.5, linestyle='--')
+        axes[i].plot(epochs, val_vals, label='Validation', marker='s', markersize=4, linewidth=1.5)
+
+        # Test als einzelner, deutlich markierter Punkt bei der letzten Epoche
+        axes[i].plot(last_epoch, test_val, label='Test', marker='X', markersize=10, color='red', linestyle='None', zorder=3)
 
         axes[i].set_title(f"Model {title}")
         axes[i].set_xlabel("Epochs")
@@ -147,29 +150,27 @@ def plot_history(history, feature_names=None):
         axes[i].legend()
         axes[i].grid(True, alpha=0.3)
 
-    # Feature Importance als Balkendiagramm im 7. Plot darstellen
+    # Feature Importance als Balkendiagramm im 5. Plot (Index 4) darstellen
     if "feature_importances" in history:
         importances = history["feature_importances"]
         num_features = len(importances)
 
-        # Fallback-Namen, falls keine spezifischen übergeben wurden
         if feature_names is None or len(feature_names) != num_features:
             feature_names = [f"F{i}" for i in range(num_features)]
 
-        axes[6].bar(feature_names, importances, color='steelblue', zorder=2)
-        axes[6].set_title("Permutation Feature Importance")
-        axes[6].set_xlabel("Features")
-        axes[6].set_ylabel("Delta ROC-AUC")
-        axes[6].grid(axis='y', alpha=0.3, zorder=1)
+        axes[4].bar(feature_names, importances, color='steelblue', zorder=2)
+        axes[4].set_title("Permutation Feature Importance")
+        axes[4].set_xlabel("Features")
+        axes[4].set_ylabel("Delta Loss")  # Angepasst auf die Loss-basierte Berechnung
+        axes[4].grid(axis='y', alpha=0.3, zorder=1)
 
-        # Exakte Werte über den Balken annotieren
         for i, v in enumerate(importances):
-            axes[6].text(i, v, f"{v:.4f}", ha='center', va='bottom', fontsize=9)
+            axes[4].text(i, v, f"{v:.4f}", ha='center', va='bottom', fontsize=9)
     else:
-        axes[6].set_visible(False)
+        axes[4].set_visible(False)
 
-    # Den ungenutzten 8. Subplot verstecken
-    axes[7].set_visible(False)
+    # Den ungenutzten 6. Subplot verstecken
+    axes[5].set_visible(False)
 
     plt.tight_layout()
     plt.show()

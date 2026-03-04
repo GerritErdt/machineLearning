@@ -10,7 +10,7 @@ import torch_geometric.loader as tg_loader
 from src.magicdl import magic
 
 class MagicStereoDataset(data.Dataset):
-    def __init__(self, m1, m2, y, train_min, train_max):
+    def __init__(self, m1, m2, y, train_min, train_max, epsilon=1e-4):
         assert m1.shape[0] == m2.shape[0] == y.shape[0], "Mismatch in number of samples between M1, M2 and labels"
 
         self.images_m1 = torch.from_numpy(m1).float()
@@ -18,11 +18,9 @@ class MagicStereoDataset(data.Dataset):
         self.labels = torch.tensor(y, dtype=torch.float32).view(-1, 1)
         self.intensity_min = train_min
         self.intensity_max = train_max
-        self.intensity_span = self.intensity_max - self.intensity_min + 1e-6
+        self.intensity_span = self.intensity_max - self.intensity_min + epsilon
         self.sqrt_min = 2.0 * np.sqrt(0.375)
-        self.sqrt_span = 2.0 * np.sqrt(max(0.0, self.intensity_max) + 0.375) - self.sqrt_min + 1e-6
-        self.sqrt_sum_min = 2.0 * np.sqrt(0.375)
-        self.sqrt_sum_span = 2.0 * np.sqrt(max(0.0, 2 * self.intensity_max) + 0.375) - self.sqrt_sum_min + 1e-6
+        self.sqrt_span = 2.0 * np.sqrt(max(0.0, self.intensity_max) + 0.375) - self.sqrt_min + epsilon
         
         # use the most common value across all images as parameter for the mask generation
         self.background_intensity = 0.0
@@ -34,7 +32,7 @@ class MagicStereoDataset(data.Dataset):
     def __len__(self):
         return self.images_m1.shape[0]
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx, epsilon=1e-4):
         # 1. Early Fusion
         x_fused = torch.stack([self.images_m1[idx], self.images_m2[idx]], dim=1)
         y = self.labels[idx]
@@ -59,7 +57,6 @@ class MagicStereoDataset(data.Dataset):
         # create additional non-linear features
         m1_sparse = x_sparse[:, 0]
         m2_sparse = x_sparse[:, 1]
-        epsilon = 1e-6
         
         m1_clipped = torch.clamp(m1_sparse, min=0.0)
         m2_clipped = torch.clamp(m2_sparse, min=0.0)
@@ -67,14 +64,9 @@ class MagicStereoDataset(data.Dataset):
         sqrt_m1 = 2 * torch.sqrt(m1_clipped + 0.375)
         sqrt_m2 = 2 * torch.sqrt(m2_clipped + 0.375)
         
-        asym = (m1_sparse - m2_sparse) / (torch.abs(m1_sparse) + torch.abs(m2_sparse) + epsilon)
-        
-        x_features = torch.stack([m1_sparse, m2_sparse, sqrt_m1, sqrt_m2, asym], dim=1)
-        # x_features = torch.stack([m1_sparse, m2_sparse], dim=1)
+        x_features = torch.stack([m1_sparse, m2_sparse, sqrt_m1, sqrt_m2], dim=1)
         x_features[:, :2] = (x_features[:, :2] - self.intensity_min) / self.intensity_span
         x_features[:, 2:4] = (x_features[:, 2:4] - self.sqrt_min) / (self.sqrt_span + epsilon)
-        x_features[:, 4] = (x_features[:, 4] - self.sqrt_sum_min) / (self.sqrt_sum_span + epsilon)
-        # no scaling for asymmetry, as it is already in a bounded range [-1, 1]
 
         # Graph MUSS nun Topologie enthalten, da sie dynamisch ist
         return tg_data.Data(x=x_features, edge_index=edge_index, pos=pos_sparse, y=y)
@@ -114,7 +106,7 @@ def load_stereo_clean_images(num_samples=10000, num_valid_pixels=1038, random_sa
     try:         
         # Lazy scan, will not load in the whole dataset
         gammas = pl.read_parquet(gamma_file).sample(num_samples, seed=42) if random_sampling else pl.scan_parquet(gamma_file).head(num_samples).collect()
-        protons = pl.read_parquet(proton_file).sample(num_samples) if random_sampling else pl.scan_parquet(proton_file).head(num_samples).collect()
+        protons = pl.read_parquet(proton_file).sample(num_samples, seed=42) if random_sampling else pl.scan_parquet(proton_file).head(num_samples).collect()
 
         # Reshape the clean image data into 2D arrays
         protons_clean_image_m1 = np.vstack(protons["clean_image_m1"].to_numpy())[:, :num_valid_pixels + 1]
@@ -130,20 +122,24 @@ def load_stereo_clean_images(num_samples=10000, num_valid_pixels=1038, random_sa
         print(f"Error loading data: {e}")
         sys.exit(1)
 
-def preprocess_images(p_m1, p_m2, g_m1, g_m2): 
+def preprocess_images(p_m1, p_m2, g_m1, g_m2, train_split = 0.7): 
     x_m1 = np.vstack((p_m1, g_m1))
     x_m2 = np.vstack((p_m2, g_m2))
     y = np.concatenate((np.zeros(p_m1.shape[0]), np.ones(g_m1.shape[0])), axis=0)
     
-    x_m1_train, x_m1_test, x_m2_train, x_m2_test, y_train, y_test = ms.train_test_split(
-        x_m1, x_m2, y, test_size=0.3, random_state=0, stratify=y, shuffle=True
+    x_m1_train, x_m1_rem, x_m2_train, x_m2_rem, y_train, y_rem = ms.train_test_split(
+        x_m1, x_m2, y, test_size=1-train_split, random_state=0, stratify=y, shuffle=True
     )
     
-    return x_m1_train, x_m1_test, x_m2_train, x_m2_test, y_train, y_test
+    x_m1_val, x_m1_test, x_m2_val, x_m2_test, y_val, y_test = ms.train_test_split(
+        x_m1_rem, x_m2_rem, y_rem, test_size=0.5, random_state=0, stratify=y_rem, shuffle=True
+    )
+    
+    return x_m1_train, x_m1_test, x_m1_val, x_m2_train, x_m2_test, x_m2_val, y_train, y_test, y_val
     
 def get_stereo_clean_dataset(num_samples = 10000, batch_size = 32):
     protons_m1, protons_m2, gammas_m1, gammas_m2 = load_stereo_clean_images(num_samples)
-    m1_train, m1_test, m2_train, m2_test, y_train, y_test = preprocess_images(protons_m1, protons_m2, gammas_m1, gammas_m2)
+    m1_train, m1_test, m1_val, m2_train, m2_test, m2_val, y_train, y_test, y_val = preprocess_images(protons_m1, protons_m2, gammas_m1, gammas_m2)
     
     num_proton = (y_train == 0).sum()
     num_gamma = (y_train == 1).sum()
@@ -154,8 +150,10 @@ def get_stereo_clean_dataset(num_samples = 10000, batch_size = 32):
 
     train_dataset = MagicStereoDataset(m1_train, m2_train, y_train, train_min, train_max)
     test_dataset = MagicStereoDataset(m1_test, m2_test, y_test, train_min, train_max)
+    val_dataset = MagicStereoDataset(m1_val, m2_val, y_val, train_min, train_max)
     
     train_loader = tg_loader.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
     test_loader = tg_loader.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
-    
-    return train_loader, test_loader, pos_weight
+    val_loader = tg_loader.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
+
+    return train_loader, test_loader, val_loader, pos_weight
