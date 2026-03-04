@@ -3,13 +3,12 @@ import torch.nn as nn
 import torchmetrics.classification as tm
 import torch_geometric.nn as gnn
 import torch.amp as amp
-import torchviz as tv
 
 import warnings
 warnings.filterwarnings("ignore", message=".*torch-scatter.*") # otherwise, the warning spams the console after every epoch
 
 class GNNModel(nn.Module):
-    def __init__(self, in_channels = 2, hidden_channels = 128, num_edge_convs = 3, out_channels = 1, dropout_rate=0.5):
+    def __init__(self, in_channels = 2, hidden_channels = 128, num_edge_convs = 4, out_channels = 1, dropout_rate=0.5):
         super().__init__()
         
         self.hidden_channels = hidden_channels
@@ -35,7 +34,11 @@ class GNNModel(nn.Module):
             conv_mlp = nn.Sequential(
                 nn.Linear(2 * hidden_channels, hidden_channels),
                 nn.LeakyReLU(),
-                nn.Dropout(dropout_rate / 2),
+                nn.Dropout(dropout_rate),
+                
+                nn.Linear(hidden_channels, hidden_channels),
+                nn.LeakyReLU(),
+                nn.Dropout(dropout_rate),
                 
                 nn.Linear(hidden_channels, hidden_channels), # linear output without activation, to be used in residual connection
             )
@@ -56,8 +59,18 @@ class GNNModel(nn.Module):
             nn.LeakyReLU(),
             nn.Dropout(dropout_rate),
             
+            nn.Linear(hidden_channels, hidden_channels),
+            nn.LayerNorm(hidden_channels),
+            nn.LeakyReLU(),
+            nn.Dropout(dropout_rate),
+            
             nn.Linear(hidden_channels, hidden_channels // 2),
             nn.LayerNorm(hidden_channels // 2),
+            nn.LeakyReLU(),
+            nn.Dropout(dropout_rate),
+            
+            nn.Linear(hidden_channels // 2, hidden_channels // 4),
+            nn.LayerNorm(hidden_channels // 4),
             nn.LeakyReLU(),
             nn.Dropout(dropout_rate),
             
@@ -146,6 +159,7 @@ class GNNModel(nn.Module):
             }
         )
         print(f"Modell erfolgreich unter {path} gespeichert.")
+
 
 def get_parameter_groups(model, weight_decay): 
     decay = []
