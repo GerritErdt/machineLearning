@@ -8,20 +8,34 @@ import warnings
 warnings.filterwarnings("ignore", message=".*torch-scatter.*") # otherwise, the warning spams the console after every epoch
 
 class GNNModel(nn.Module):
-    def __init__(self, in_channels = 4, hidden_channels = 128, num_edge_convs = 3, out_channels = 1, dropout_rate=0.5):
+    def __init__(self, input_net_layer_count, internal_dimensions, num_edge_convs, gnn_step_layer_count, gnn_step_dropout_reduction, classifier_layer_count, dropout_rate=0.5, in_channels=4):
+        assert input_net_layer_count >= 2, "input_net_layer_count must be at least 2 to have a final linear layer for the residual connection"
+        assert gnn_step_layer_count >= 2, "gnn_step_layer_count must be at least 2 to have a final linear layer in the EdgeConv-MLP for the residual connection"
+        assert classifier_layer_count >= 2, "classifier_layer_count must be at least 2 to have a final linear layer for the output"
+        
         super().__init__()
         
-        self.hidden_channels = hidden_channels
+        self.hidden_channels = internal_dimensions
         self.num_edge_convs = num_edge_convs
+        self.out_channels = 1
         
         # input transformation, project from two dimensions (M1 and M2) to hidden_channels dimensions for the GNN layers
-        self.input_net = nn.Sequential(
-            nn.Linear(in_channels, hidden_channels), 
-            gnn.GraphNorm(hidden_channels),
-            nn.LeakyReLU(),
-            
-            nn.Linear(hidden_channels, hidden_channels), # no activation here, to allow for residual connections right after the input layer as well
-        )
+        input_net_layers = []
+        input_net_layers.extend([
+            nn.Linear(in_channels, internal_dimensions),
+            gnn.GraphNorm(internal_dimensions),
+            nn.GELU(),
+        ])
+        
+        for _ in range(input_net_layer_count - 2):
+            input_net_layers.extend([
+                nn.Linear(internal_dimensions, internal_dimensions),
+                gnn.GraphNorm(internal_dimensions),
+                nn.GELU(),
+            ])
+        
+        input_net_layers.append(nn.Linear(internal_dimensions, internal_dimensions))  # final linear layer without activation, to be used in residual connection
+        self.input_net = nn.Sequential(*input_net_layers)
         
         # GNN-layers
         self.convs = nn.ModuleList() # GraphConv-layers
@@ -31,43 +45,60 @@ class GNNModel(nn.Module):
         multi_aggr = gnn.aggr.MultiAggregation(["max", "mean"]) 
         
         for _ in range(self.num_edge_convs):
-            conv_mlp = nn.Sequential(
-                nn.Linear(2 * hidden_channels, hidden_channels),
-                nn.LeakyReLU(),
-                nn.Dropout(dropout_rate / 2),
-                
-                nn.Linear(hidden_channels, hidden_channels), # linear output without activation, to be used in residual connection
-            )
+            conv_mlp_layers = []
+            conv_mlp_layers.extend([
+                nn.Linear(2 * internal_dimensions, internal_dimensions),  # input dimension is doubled due to EdgeConv's concatenation of central node and neighbor features
+                nn.GELU(),
+                nn.Dropout(dropout_rate / gnn_step_dropout_reduction), 
+            ])
+            
+            for _ in range(gnn_step_layer_count - 2):
+                conv_mlp_layers.extend([
+                    nn.Linear(internal_dimensions, internal_dimensions),
+                    nn.GELU(),
+                    nn.Dropout(dropout_rate / gnn_step_dropout_reduction),
+                ])
+            
+            conv_mlp_layers.append(nn.Linear(internal_dimensions, internal_dimensions))  # final linear layer without activation, to be used in residual connection
+            conv_mlp = nn.Sequential(*conv_mlp_layers)
+            
             self.convs.append(gnn.EdgeConv(conv_mlp, aggr=multi_aggr))
             
             self.projs.append(nn.Sequential( # only perform linear projection to reduce dimensionality
-                nn.Linear(2 * hidden_channels, hidden_channels),
+                nn.Linear(2 * internal_dimensions, internal_dimensions),
             ))
             
-            self.norms.append(gnn.GraphNorm(hidden_channels))
+            self.norms.append(gnn.GraphNorm(internal_dimensions))
         
-        self.final_norm = gnn.GraphNorm(hidden_channels) # final normalization before the classifier
+        self.final_norm = gnn.GraphNorm(internal_dimensions) # final normalization before the classifier
             
         # classifier-Schicht
-        self.classifier = nn.Sequential(
-            nn.Linear(2 * hidden_channels, hidden_channels),
-            nn.LayerNorm(hidden_channels),
-            nn.LeakyReLU(),
+        classifier_layers = []
+        classifier_layers.extend([
+            nn.Linear(2 * internal_dimensions, internal_dimensions),
+            nn.LayerNorm(internal_dimensions),
+            nn.GELU(),
             nn.Dropout(dropout_rate),
-            
-            nn.Linear(hidden_channels, hidden_channels),
-            nn.LayerNorm(hidden_channels),
-            nn.LeakyReLU(),
-            nn.Dropout(dropout_rate),
-            
-            nn.Linear(hidden_channels, out_channels)
-        )
+        ])
+        
+        for _ in range(classifier_layer_count - 2):
+            classifier_layers.extend([
+                nn.Linear(internal_dimensions, internal_dimensions),
+                nn.LayerNorm(internal_dimensions),
+                nn.GELU(),
+                nn.Dropout(dropout_rate),
+            ])
+        
+        classifier_layers.extend([
+            nn.Linear(internal_dimensions, self.out_channels)
+        ])
+        
+        self.classifier = nn.Sequential(*classifier_layers)
         
         # weight initialization
         self.apply(self._init_weights)
         
         # print network statistics
-        print(f"Model initialized with {self.num_edge_convs} EdgeConv layers, hidden dimension {self.hidden_channels}, and dropout rate {dropout_rate}.")
         print(f"Total number of parameters: {sum(p.numel() for p in self.parameters())}")
     
     def _init_weights(self, module): 
