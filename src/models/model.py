@@ -8,7 +8,7 @@ import warnings
 warnings.filterwarnings("ignore", message=".*torch-scatter.*") # otherwise, the warning spams the console after every epoch
 
 class GNNModel(nn.Module):
-    def __init__(self, in_channels = 2, hidden_channels = 128, num_edge_convs = 3, out_channels = 1, dropout_rate=0.5):
+    def __init__(self, in_channels = 5, hidden_channels = 128, num_edge_convs = 3, out_channels = 1, dropout_rate=0.5):
         super().__init__()
         
         self.hidden_channels = hidden_channels
@@ -33,10 +33,6 @@ class GNNModel(nn.Module):
         for _ in range(self.num_edge_convs):
             conv_mlp = nn.Sequential(
                 nn.Linear(2 * hidden_channels, hidden_channels),
-                nn.LeakyReLU(),
-                nn.Dropout(dropout_rate / 2),
-                
-                nn.Linear(hidden_channels, hidden_channels),
                 nn.LeakyReLU(),
                 nn.Dropout(dropout_rate / 2),
                 
@@ -138,8 +134,47 @@ def get_parameter_groups(model, weight_decay):
         {"params": no_decay, "weight_decay": 0.0}
     ]
 
+def get_input_importance(model, test_loader, history, device):
+    print("\nBerechne feature-importance")
+    model.eval()
+    num_features = test_loader.dataset[0].x.shape[1]
+    
+    baseline_roc = history["test_roc"][-1]
+    feature_importances = []
+    
+    with torch.no_grad():
+        for feature_idx in range(num_features):
+            perm_metric = tm.BinaryAUROC().to(device)
+
+            for batch in test_loader:
+                batch = batch.to(device)
+
+                # 1. Batch klonen, um Originaldaten im Loader nicht zu zerstören
+                batch_cloned = batch.clone()
+
+                # 2. Nur die spezifische Feature-Spalte über alle Knoten hinweg permutieren
+                perm_indices = torch.randperm(batch_cloned.x.size(0))
+                batch_cloned.x[:, feature_idx] = batch_cloned.x[perm_indices, feature_idx]
+
+                # 3. Infernz mit dem zerstörten Feature
+                out = model(batch_cloned.x, batch_cloned.edge_index, batch_cloned.batch, batch_cloned.num_graphs)
+                probs = torch.sigmoid(out.view(-1))
+                targets = batch_cloned.y.view(-1).long()
+
+                perm_metric.update(probs, targets)
+
+            # 4. Leistungsabfall berechnen
+            perm_roc = perm_metric.compute().item()
+            importance = baseline_roc - perm_roc
+            feature_importances.append(importance)
+
+            print(f"Feature {feature_idx}: Wichtigkeit (Delta ROC AUC) = {importance:.4f}")
+    
+    history["feature_importances"] = feature_importances
+    print("Feature-Importance Berechnung abgeschlossen.\n")
+
 # TODO: include validation data
-def learn(model, train_loader, test_loader, epochs=10, lr_start=1e-4, lr_patience=3, l2_reg=5e-4, pos_weight=1.0):
+def learn(model, train_loader, test_loader, epochs=10, lr_start=1e-4, lr_patience=3, l2_reg=5e-1, pos_weight=1.0):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # auto-detect GPU-availability
     model = model.to(device) 
     scaler = amp.GradScaler(enabled=(device.type == 'cuda'))  # automatic mixed precision for faster training on GPU
@@ -265,6 +300,8 @@ def learn(model, train_loader, test_loader, epochs=10, lr_start=1e-4, lr_patienc
               f"Test Acc: {history['test_accuracy'][-1]:.4f} | Test F1: {history['test_f1'][-1]:.4f} | LR: {optimizer.param_groups[0]['lr']:.6f}")
 
         scheduler.step(epoch_test_loss)
+    
+    get_input_importance(model, test_loader, history, device)
     
     return model, history
 

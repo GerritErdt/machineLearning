@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.collections as mcoll
 import numpy as np
-import src.dataLoading.data_loading as dl
+import src.data_loading.data_loading as dl
 import torch
 import random
 
@@ -65,7 +65,7 @@ def plot_fused_magic_graph(data, label_name="Event"):
     plt.show()
 
 def show_many_graphs():
-    train_loader, _ = dl.get_stereo_clean_dataset(num_samples=100)
+    train_loader, _, _= dl.get_stereo_clean_dataset(num_samples=100)
     train_dataset = train_loader.dataset
     edge_index, pos = dl.compute_camera_topology()
 
@@ -116,7 +116,7 @@ def plot_histograms_for_telescopes():
     import matplotlib.pyplot as plt
 
 
-def plot_history(history):
+def plot_history(history, feature_names=None):
     # Definition der Metriken und ihrer Anzeigenamen
     metrics = [
         ("loss", "Loss"),
@@ -129,10 +129,11 @@ def plot_history(history):
 
     epochs = range(1, len(history["train_loss"]) + 1)
 
-    # Erstelle ein 2x3 Raster
-    fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+    # Erstelle ein 2x4 Raster für insgesamt 7 Plots
+    fig, axes = plt.subplots(2, 4, figsize=(20, 10))
     axes = axes.flatten()
 
+    # Zeitreihen für die Trainingsmetriken plotten
     for i, (key, title) in enumerate(metrics):
         train_vals = history[f"train_{key}"]
         test_vals = history[f"test_{key}"]
@@ -146,12 +147,33 @@ def plot_history(history):
         axes[i].legend()
         axes[i].grid(True, alpha=0.3)
 
-        # Speziell für Loss-Plot: y-Achse ggf. logarythmisch, falls Werte stark schwanken
-        # if key == "loss": axes[i].set_yscale('log')
+    # Feature Importance als Balkendiagramm im 7. Plot darstellen
+    if "feature_importances" in history:
+        importances = history["feature_importances"]
+        num_features = len(importances)
+
+        # Fallback-Namen, falls keine spezifischen übergeben wurden
+        if feature_names is None or len(feature_names) != num_features:
+            feature_names = [f"F{i}" for i in range(num_features)]
+
+        axes[6].bar(feature_names, importances, color='steelblue', zorder=2)
+        axes[6].set_title("Permutation Feature Importance")
+        axes[6].set_xlabel("Features")
+        axes[6].set_ylabel("Delta ROC-AUC")
+        axes[6].grid(axis='y', alpha=0.3, zorder=1)
+
+        # Exakte Werte über den Balken annotieren
+        for i, v in enumerate(importances):
+            axes[6].text(i, v, f"{v:.4f}", ha='center', va='bottom', fontsize=9)
+    else:
+        axes[6].set_visible(False)
+
+    # Den ungenutzten 8. Subplot verstecken
+    axes[7].set_visible(False)
 
     plt.tight_layout()
     plt.show()
-  
+
 def set_all_seeds(seed=42):
     # 1. Standard Python Random Seed
     random.seed(seed)
