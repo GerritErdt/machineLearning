@@ -1,8 +1,11 @@
+import copy
+
 import torch
 import torch.nn as nn
 import torchmetrics.classification as tm
 import torch_geometric.nn as gnn
 import torch.amp as amp
+import optuna
 
 import warnings
 warnings.filterwarnings("ignore", message=".*torch-scatter.*") # otherwise, the warning spams the console after every epoch
@@ -271,7 +274,7 @@ def train_one_epoch(model, data_loader, device, history, metrics, optimizer, sca
         history[f"train_{key}"].append(metric.compute().item())
         metric.reset()
 
-def learn(model, train_loader, test_loader, val_loader, epochs=10, lr_start=1e-4, lr_patience=3, l2_reg=5e-1, pos_weight=1.0):
+def learn(model, train_loader, val_loader, test_loader, epochs, lr_start, l2_reg, pos_weight, lr_patience=5, early_stopping_patience=10, trial=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # auto-detect GPU-availability
     model = model.to(device) 
     scaler = amp.GradScaler(enabled=(device.type == 'cuda'))  # automatic mixed precision for faster training on GPU
@@ -279,8 +282,8 @@ def learn(model, train_loader, test_loader, val_loader, epochs=10, lr_start=1e-4
     
     criterion = nn.BCEWithLogitsLoss(pos_weight=weight_tensor)
     param_groups = get_parameter_groups(model, l2_reg)
-    optimizer = torch.optim.AdamW(param_groups, lr=lr_start) 
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=lr_patience) 
+    optimizer = torch.optim.AdamW(param_groups, lr=lr_start) # TODO: make hyper param
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.75, patience=lr_patience, min_lr=1e-6) 
     
     metrics_train = {
         "precision": tm.BinaryPrecision().to(device),
@@ -307,26 +310,97 @@ def learn(model, train_loader, test_loader, val_loader, epochs=10, lr_start=1e-4
         "train_f1": [], "val_f1": [], "test_f1": [],
     }
     
+    best_val_loss = float('inf')
+    patience_counter = 0
+    best_model = None
+    
     for epoch in range(epochs):
         train_one_epoch(model, train_loader, device, history, metrics_train, optimizer, scaler, criterion)
     
         # evaluation on val data after each epoch
         grade_model(model, val_loader, device, history, metrics_val, "val", criterion)
+        current_val_loss = history['val_loss'][-1]
         
         print(f"Epoch {epoch+1:03d}/{epochs:03d} | "
-              f"Train Loss: {history['train_loss'][-1]:.4f} | Val Loss: {history['val_loss'][-1]:.4f} | "
+              f"Train Loss: {history['train_loss'][-1]:.4f} | Val Loss: {current_val_loss:.4f} | "
               f"Val F1: {history['val_f1'][-1]:.4f} | LR: {optimizer.param_groups[0]['lr']:.6f}")
+        
+        if trial is not None:
+            trial.report(current_val_loss, epoch)
+            if(trial.should_prune()):
+                print("Trial pruned due to no improvement in validation loss.")
+                raise optuna.exceptions.TrialPruned()
+        
+        # early stopping and model checkpointing
+        if current_val_loss < best_val_loss:
+            best_val_loss = current_val_loss
+            patience_counter = 0
+            best_model = copy.deepcopy(model.state_dict())  # save the best model's state_dict
+        else:
+            patience_counter += 1
+            
+            if patience_counter >= early_stopping_patience:
+                print(f"Early stopping triggered after {epoch+1} epochs.")
+                model.load_state_dict(best_model)  # load the best model's weights before stopping
+                break
 
-        scheduler.step(history['val_loss'][-1])  
+        scheduler.step(current_val_loss)
     
-    # final evaluation on test data after training
-    grade_model(model, test_loader, device, history, metrics_test, "test", criterion)
-    print(f"\nFinal Test Loss: {history['test_loss'][-1]:.4f} | Test F1: {history['test_f1'][-1]:.4f}")
+    model.load_state_dict(best_model)  # ensure the best model is loaded after training loop ends, in case of early stopping
     
-    get_input_importance(model, test_loader, history, device)
+    # final evaluation on test data after training, but only if not in HP optimization
+    if trial is None:
+        grade_model(model, test_loader, device, history, metrics_test, "test", criterion)
+        print(f"\nFinal Test Loss: {history['test_loss'][-1]:.4f} | Test F1: {history['test_f1'][-1]:.4f}")
+        
+        get_input_importance(model, test_loader, history, device)
     
     return model, history
 
+def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight):
+    config = {
+        # model parameters
+        "input_net_layer_count": trial.suggest_int("input_net_layer_count", 2, 5, step=1),
+        "internal_dimensions": trial.suggest_int("internal_dimensions", 8, 128, step=8),
+        "num_edge_convs": trial.suggest_int("num_edge_convs", 2, 5, step=1),
+        "gnn_step_layer_count": trial.suggest_int("gnn_step_layer_count", 2, 4, step=1),
+        "gnn_step_dropout_reduction": trial.suggest_int("gnn_step_dropout_reduction", 1, 9, step=2),
+        "classifier_layer_count": trial.suggest_int("classifier_layer_count", 2, 5, step=1),
+        "dropout_rate": trial.suggest_float("dropout_rate", 0.1, 0.5, step=0.1),
+        
+        # training parameters
+        "lr_start": trial.suggest_float("lr_start", 1e-5, 1e-3, log=True),
+        "l2_reg": trial.suggest_float("l2_reg", 1e-5, 1e-2, log=True)
+    }
+    
+    model = GNNModel(
+        input_net_layer_count=config["input_net_layer_count"],
+        internal_dimensions=config["internal_dimensions"],
+        num_edge_convs=config["num_edge_convs"],
+        gnn_step_layer_count=config["gnn_step_layer_count"],
+        gnn_step_dropout_reduction=config["gnn_step_dropout_reduction"],
+        classifier_layer_count=config["classifier_layer_count"],
+        dropout_rate=config["dropout_rate"]
+    )
+    
+    try: 
+        trained_model, history = learn(
+            model=model, 
+            train_loader=train_loader,
+            val_loader=val_loader,
+            test_loader=test_loader,
+            epochs=epochs,
+            lr_start=config["lr_start"],
+            l2_reg=config["l2_reg"],
+            pos_weight=pos_weight,
+            trial=trial
+        )
+        
+        return history["val_loss"][-1] # return the last/best val loss (valid due to early stopping)
+    except Exception as e:
+        print(f"Trial failed with error: {e}")
+        return float('inf')  # return a large number to indicate failure for this trial
+
 if __name__ == "__main__":
-    model = GNNModel()
+    model_test = GNNModel()
     
