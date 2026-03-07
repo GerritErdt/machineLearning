@@ -1,0 +1,375 @@
+PS C:\Users\gerri\Meine Ablage\Studium\Maschinelles Lernen\projectWorkspace> py -m src.main 
+[I 2026-03-07 00:15:53,041] A new study created in memory with name: no-name-e54acb7f-1678-4678-9e02-23d59c175b01
+Initialized GNNModel with: internal_dimensions=32 , num_edge_convs=6 , gnn_step_dropout=0.20, classifier_dropout=0.10. Trainable parameters: 39457
+Epoch 001/005 | Train Loss: 0.6959 | Val Loss: 0.6845 | Val AUROC: 0.6303 | LR: 0.000344
+Epoch 002/005 | Train Loss: 0.6598 | Val Loss: 0.6865 | Val AUROC: 0.6723 | LR: 0.000344
+Epoch 003/005 | Train Loss: 0.6301 | Val Loss: 0.7267 | Val AUROC: 0.7260 | LR: 0.000344
+Epoch 004/005 | Train Loss: 0.5907 | Val Loss: 0.7931 | Val AUROC: 0.6561 | LR: 0.000344
+Epoch 005/005 | Train Loss: 0.5628 | Val Loss: 0.7930 | Val AUROC: 0.6897 | LR: 0.000344
+[I 2026-03-07 00:21:44,264] Trial 0 finished with value: 0.6845417430665758 and parameters: {'input_net_dropout': 0.0, 'internal_dimensions': 32, 'num_edge_convs': 6, 'gnn_step_dropout': 0.2, 'classifier_dropout': 0.1, 'lr_start': 0.0003441343859029146, 'l2_reg': 0.002389239283051386}. Best is trial 0 with value: 0.6845417430665758.
+Initialized GNNModel with: internal_dimensions=32 , num_edge_convs=3 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 23233
+Epoch 001/005 | Train Loss: 0.6512 | Val Loss: 0.5607 | Val AUROC: 0.7903 | LR: 0.001275
+Epoch 002/005 | Train Loss: 0.5556 | Val Loss: 0.6469 | Val AUROC: 0.7838 | LR: 0.001275
+Epoch 003/005 | Train Loss: 0.5121 | Val Loss: 0.4941 | Val AUROC: 0.8673 | LR: 0.001275
+Epoch 004/005 | Train Loss: 0.4936 | Val Loss: 0.5416 | Val AUROC: 0.8577 | LR: 0.001275
+Epoch 005/005 | Train Loss: 0.4744 | Val Loss: 0.4782 | Val AUROC: 0.8609 | LR: 0.001275
+[I 2026-03-07 00:26:14,551] Trial 1 finished with value: 0.4782316610283322 and parameters: {'input_net_dropout': 0.0, 'internal_dimensions': 32, 'num_edge_convs': 3, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.0012750205470426156, 'l2_reg': 0.00027105896122657806}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=3 , gnn_step_dropout=0.30, classifier_dropout=0.50. Trainable parameters: 89985
+Epoch 001/005 | Train Loss: 0.7206 | Val Loss: 0.6960 | Val AUROC: 0.6101 | LR: 0.000589
+Epoch 002/005 | Train Loss: 0.6981 | Val Loss: 0.6942 | Val AUROC: 0.6207 | LR: 0.000589
+Epoch 003/005 | Train Loss: 0.6833 | Val Loss: 0.6560 | Val AUROC: 0.6434 | LR: 0.000589
+Epoch 004/005 | Train Loss: 0.6660 | Val Loss: 0.6429 | Val AUROC: 0.6711 | LR: 0.000589
+Epoch 005/005 | Train Loss: 0.6337 | Val Loss: 0.6155 | Val AUROC: 0.7447 | LR: 0.000589
+[I 2026-03-07 00:31:16,794] Trial 2 finished with value: 0.6155384721226163 and parameters: {'input_net_dropout': 0.1, 'internal_dimensions': 64, 'num_edge_convs': 3, 'gnn_step_dropout': 0.30000000000000004, 'classifier_dropout': 0.5, 'lr_start': 0.0005893283025837898, 'l2_reg': 0.0002614424459072713}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=32 , num_edge_convs=4 , gnn_step_dropout=0.10, classifier_dropout=0.30. Trainable parameters: 28641
+Epoch 001/005 | Train Loss: 0.6969 | Val Loss: 0.6921 | Val AUROC: 0.5910 | LR: 0.000363
+Epoch 002/005 | Train Loss: 0.6911 | Val Loss: 0.7068 | Val AUROC: 0.5941 | LR: 0.000363
+Epoch 003/005 | Train Loss: 0.6776 | Val Loss: 0.6805 | Val AUROC: 0.6362 | LR: 0.000363
+Epoch 004/005 | Train Loss: 0.6672 | Val Loss: 0.6613 | Val AUROC: 0.6511 | LR: 0.000363
+Epoch 005/005 | Train Loss: 0.6509 | Val Loss: 0.6378 | Val AUROC: 0.6849 | LR: 0.000363
+[I 2026-03-07 00:36:12,501] Trial 3 finished with value: 0.6378494457668729 and parameters: {'input_net_dropout': 0.1, 'internal_dimensions': 32, 'num_edge_convs': 4, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.30000000000000004, 'lr_start': 0.00036292607621870584, 'l2_reg': 7.777109700989694e-05}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=128, num_edge_convs=7 , gnn_step_dropout=0.40, classifier_dropout=0.10. Trainable parameters: 686337
+Epoch 001/005 | Train Loss: 0.6828 | Val Loss: 0.6603 | Val AUROC: 0.6369 | LR: 0.004901
+Epoch 002/005 | Train Loss: 0.6316 | Val Loss: 0.6259 | Val AUROC: 0.6973 | LR: 0.004901
+Epoch 003/005 | Train Loss: 0.6008 | Val Loss: 0.5414 | Val AUROC: 0.7927 | LR: 0.004901
+Epoch 004/005 | Train Loss: 0.5359 | Val Loss: 0.5353 | Val AUROC: 0.8196 | LR: 0.004901
+Epoch 005/005 | Train Loss: 0.5153 | Val Loss: 0.6607 | Val AUROC: 0.8196 | LR: 0.004901
+[I 2026-03-07 01:56:18,291] Trial 4 finished with value: 0.5353428409364488 and parameters: {'input_net_dropout': 0.1, 'internal_dimensions': 128, 'num_edge_convs': 7, 'gnn_step_dropout': 0.4, 'classifier_dropout': 0.1, 'lr_start': 0.00490147090054995, 'l2_reg': 2.774452521374471e-05}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=32 , num_edge_convs=7 , gnn_step_dropout=0.50, classifier_dropout=0.10. Trainable parameters: 44865
+Epoch 001/005 | Train Loss: 0.7112 | Val Loss: 0.7866 | Val AUROC: 0.6135 | LR: 0.000776
+Epoch 002/005 | Train Loss: 0.6725 | Val Loss: 0.8087 | Val AUROC: 0.6191 | LR: 0.000776
+Epoch 003/005 | Train Loss: 0.6574 | Val Loss: 0.7926 | Val AUROC: 0.6043 | LR: 0.000776
+Epoch 004/005 | Train Loss: 0.6381 | Val Loss: 0.8831 | Val AUROC: 0.4770 | LR: 0.000776
+Epoch 005/005 | Train Loss: 0.6203 | Val Loss: 0.9132 | Val AUROC: 0.3858 | LR: 0.000776
+[I 2026-03-07 02:02:16,152] Trial 5 finished with value: 0.7866058784590827 and parameters: {'input_net_dropout': 0.25, 'internal_dimensions': 32, 'num_edge_convs': 7, 'gnn_step_dropout': 0.5, 'classifier_dropout': 0.1, 'lr_start': 0.0007755384016707548, 'l2_reg': 0.0011831927994869049}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=8 , gnn_step_dropout=0.40, classifier_dropout=0.50. Trainable parameters: 195265
+Epoch 001/005 | Train Loss: 0.7311 | Val Loss: 0.6953 | Val AUROC: 0.5864 | LR: 0.000264
+Epoch 002/005 | Train Loss: 0.7048 | Val Loss: 0.6943 | Val AUROC: 0.5931 | LR: 0.000264
+Epoch 003/005 | Train Loss: 0.7014 | Val Loss: 0.6923 | Val AUROC: 0.6022 | LR: 0.000264
+Epoch 004/005 | Train Loss: 0.6969 | Val Loss: 0.6891 | Val AUROC: 0.6367 | LR: 0.000264
+Epoch 005/005 | Train Loss: 0.6956 | Val Loss: 0.6871 | Val AUROC: 0.6335 | LR: 0.000264
+[I 2026-03-07 02:14:33,304] Trial 6 finished with value: 0.6870696604516771 and parameters: {'input_net_dropout': 0.2, 'internal_dimensions': 64, 'num_edge_convs': 8, 'gnn_step_dropout': 0.4, 'classifier_dropout': 0.5, 'lr_start': 0.00026351209635788075, 'l2_reg': 8.426382084628603e-05}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=4 , gnn_step_dropout=0.30, classifier_dropout=0.30. Trainable parameters: 111041
+Epoch 001/005 | Train Loss: 0.6955 | Val Loss: 0.6679 | Val AUROC: 0.6263 | LR: 0.003975
+Epoch 002/005 | Train Loss: 0.6605 | Val Loss: 0.6371 | Val AUROC: 0.6628 | LR: 0.003975
+Epoch 003/005 | Train Loss: 0.6306 | Val Loss: 0.6338 | Val AUROC: 0.7052 | LR: 0.003975
+Epoch 004/005 | Train Loss: 0.5842 | Val Loss: 0.5739 | Val AUROC: 0.7946 | LR: 0.003975
+Epoch 005/005 | Train Loss: 0.5324 | Val Loss: 0.4832 | Val AUROC: 0.8485 | LR: 0.003975
+[I 2026-03-07 02:22:08,543] Trial 7 finished with value: 0.48315732873810663 and parameters: {'input_net_dropout': 0.0, 'internal_dimensions': 64, 'num_edge_convs': 4, 'gnn_step_dropout': 0.30000000000000004, 'classifier_dropout': 0.30000000000000004, 'lr_start': 0.003975164011073591, 'l2_reg': 0.0004663213535977409}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=4 , gnn_step_dropout=0.50, classifier_dropout=0.30. Trainable parameters: 111041
+Epoch 001/005 | Train Loss: 0.6931 | Val Loss: 0.6568 | Val AUROC: 0.6368 | LR: 0.002778
+Epoch 002/005 | Train Loss: 0.6453 | Val Loss: 0.6630 | Val AUROC: 0.7138 | LR: 0.002778
+Epoch 003/005 | Train Loss: 0.5974 | Val Loss: 0.6128 | Val AUROC: 0.7575 | LR: 0.002778
+Epoch 004/005 | Train Loss: 0.5596 | Val Loss: 0.7045 | Val AUROC: 0.7472 | LR: 0.002778
+Epoch 005/005 | Train Loss: 0.5220 | Val Loss: 1.1741 | Val AUROC: 0.6482 | LR: 0.002778
+[I 2026-03-07 02:30:23,447] Trial 8 finished with value: 0.6127740348180135 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 4, 'gnn_step_dropout': 0.5, 'classifier_dropout': 0.30000000000000004, 'lr_start': 0.002778359993183578, 'l2_reg': 1.452574451411258e-05}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=128, num_edge_convs=8 , gnn_step_dropout=0.30, classifier_dropout=0.30. Trainable parameters: 769409
+Epoch 001/005 | Train Loss: 0.7074 | Val Loss: 1.0199 | Val AUROC: 0.6094 | LR: 0.000450
+Epoch 002/005 | Train Loss: 0.6693 | Val Loss: 0.7694 | Val AUROC: 0.6642 | LR: 0.000450
+Epoch 003/005 | Train Loss: 0.6100 | Val Loss: 0.8086 | Val AUROC: 0.6343 | LR: 0.000450
+Epoch 004/005 | Train Loss: 0.5401 | Val Loss: 1.1079 | Val AUROC: 0.4648 | LR: 0.000450
+Epoch 005/005 | Train Loss: 0.5082 | Val Loss: 1.4042 | Val AUROC: 0.4720 | LR: 0.000450
+[I 2026-03-07 04:03:24,483] Trial 9 finished with value: 0.7694156367513868 and parameters: {'input_net_dropout': 0.15000000000000002, 'internal_dimensions': 128, 'num_edge_convs': 8, 'gnn_step_dropout': 0.30000000000000004, 'classifier_dropout': 0.30000000000000004, 'lr_start': 0.00044987029429933685, 'l2_reg': 2.0633396175834364e-05}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=32 , num_edge_convs=2 , gnn_step_dropout=0.10, classifier_dropout=0.20. Trainable parameters: 17825
+Epoch 001/005 | Train Loss: 0.6677 | Val Loss: 0.6547 | Val AUROC: 0.6952 | LR: 0.001703
+Epoch 002/005 | Train Loss: 0.5900 | Val Loss: 0.6190 | Val AUROC: 0.7829 | LR: 0.001703
+Epoch 003/005 | Train Loss: 0.5362 | Val Loss: 0.5673 | Val AUROC: 0.8287 | LR: 0.001703
+Epoch 004/005 | Train Loss: 0.5116 | Val Loss: 0.5936 | Val AUROC: 0.8447 | LR: 0.001703
+Epoch 005/005 | Train Loss: 0.4907 | Val Loss: 0.5505 | Val AUROC: 0.8726 | LR: 0.001703
+[I 2026-03-07 04:07:22,660] Trial 10 finished with value: 0.5504627296659681 and parameters: {'input_net_dropout': 0.0, 'internal_dimensions': 32, 'num_edge_convs': 2, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.2, 'lr_start': 0.0017026396359001497, 'l2_reg': 0.006170890370066666}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=4 , gnn_step_dropout=0.20, classifier_dropout=0.40. Trainable parameters: 111041
+Epoch 001/005 | Train Loss: 0.6887 | Val Loss: 0.6685 | Val AUROC: 0.6289 | LR: 0.008833
+Epoch 002/005 | Train Loss: 0.6682 | Val Loss: 0.6639 | Val AUROC: 0.6269 | LR: 0.008833
+Epoch 003/005 | Train Loss: 0.6634 | Val Loss: 0.6476 | Val AUROC: 0.6381 | LR: 0.008833
+Epoch 004/005 | Train Loss: 0.6557 | Val Loss: 0.6321 | Val AUROC: 0.6644 | LR: 0.008833
+Epoch 005/005 | Train Loss: 0.6241 | Val Loss: 0.5938 | Val AUROC: 0.7583 | LR: 0.008833
+[I 2026-03-07 04:15:00,348] Trial 11 finished with value: 0.5937706020143297 and parameters: {'input_net_dropout': 0.0, 'internal_dimensions': 64, 'num_edge_convs': 4, 'gnn_step_dropout': 0.2, 'classifier_dropout': 0.4, 'lr_start': 0.008833348778407907, 'l2_reg': 0.0005043365871964366}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=32 , num_edge_convs=2 , gnn_step_dropout=0.20, classifier_dropout=0.20. Trainable parameters: 17825
+Epoch 001/005 | Train Loss: 0.6887 | Val Loss: 0.6644 | Val AUROC: 0.6273 | LR: 0.001559
+Epoch 002/005 | Train Loss: 0.6550 | Val Loss: 0.6335 | Val AUROC: 0.6434 | LR: 0.001559
+Epoch 003/005 | Train Loss: 0.6115 | Val Loss: 0.5872 | Val AUROC: 0.7668 | LR: 0.001559
+Epoch 004/005 | Train Loss: 0.5750 | Val Loss: 0.6581 | Val AUROC: 0.8123 | LR: 0.001559
+Epoch 005/005 | Train Loss: 0.5365 | Val Loss: 0.6639 | Val AUROC: 0.7988 | LR: 0.001559
+[I 2026-03-07 04:19:00,165] Trial 12 finished with value: 0.587207198354933 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 32, 'num_edge_convs': 2, 'gnn_step_dropout': 0.2, 'classifier_dropout': 0.2, 'lr_start': 0.0015589738236347695, 'l2_reg': 0.0003242172591114084}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.10, classifier_dropout=0.20. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6693 | Val Loss: 0.6661 | Val AUROC: 0.6647 | LR: 0.003401
+Epoch 002/005 | Train Loss: 0.6370 | Val Loss: 0.6227 | Val AUROC: 0.6914 | LR: 0.003401
+Epoch 003/005 | Train Loss: 0.5866 | Val Loss: 0.5413 | Val AUROC: 0.8079 | LR: 0.003401
+Epoch 004/005 | Train Loss: 0.5523 | Val Loss: 0.5181 | Val AUROC: 0.8202 | LR: 0.003401
+Epoch 005/005 | Train Loss: 0.5149 | Val Loss: 0.5139 | Val AUROC: 0.8358 | LR: 0.003401
+[I 2026-03-07 04:27:30,860] Trial 13 finished with value: 0.5138640133010016 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 5, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.2, 'lr_start': 0.0034009544780229345, 'l2_reg': 0.00012944624597388814}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=128, num_edge_convs=3 , gnn_step_dropout=0.40, classifier_dropout=0.40. Trainable parameters: 354049
+Epoch 001/005 | Train Loss: 0.7263 | Val Loss: 0.6907 | Val AUROC: 0.6228 | LR: 0.000121
+Epoch 002/005 | Train Loss: 0.6896 | Val Loss: 0.7402 | Val AUROC: 0.6387 | LR: 0.000121
+Epoch 003/005 | Train Loss: 0.6665 | Val Loss: 0.7222 | Val AUROC: 0.6741 | LR: 0.000121
+Epoch 004/005 | Train Loss: 0.6428 | Val Loss: 0.8070 | Val AUROC: 0.6461 | LR: 0.000121
+Epoch 005/005 | Train Loss: 0.6232 | Val Loss: 0.7794 | Val AUROC: 0.6514 | LR: 0.000121
+[I 2026-03-07 04:56:37,096] Trial 14 finished with value: 0.6907382135921054 and parameters: {'input_net_dropout': 0.0, 'internal_dimensions': 128, 'num_edge_convs': 3, 'gnn_step_dropout': 0.4, 'classifier_dropout': 0.4, 'lr_start': 0.00012056888898547692, 'l2_reg': 0.000974029888680698}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=32 , num_edge_convs=5 , gnn_step_dropout=0.20, classifier_dropout=0.40. Trainable parameters: 34049
+Epoch 001/005 | Train Loss: 0.7170 | Val Loss: 0.6907 | Val AUROC: 0.5980 | LR: 0.001469
+Epoch 002/005 | Train Loss: 0.6923 | Val Loss: 0.6892 | Val AUROC: 0.6150 | LR: 0.001469
+Epoch 003/005 | Train Loss: 0.6774 | Val Loss: 0.6605 | Val AUROC: 0.6441 | LR: 0.001469
+Epoch 004/005 | Train Loss: 0.6601 | Val Loss: 0.6210 | Val AUROC: 0.6833 | LR: 0.001469
+Epoch 005/005 | Train Loss: 0.6143 | Val Loss: 0.5830 | Val AUROC: 0.7580 | LR: 0.001469
+[I 2026-03-07 05:01:49,447] Trial 15 finished with value: 0.5829584189785851 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 32, 'num_edge_convs': 5, 'gnn_step_dropout': 0.2, 'classifier_dropout': 0.4, 'lr_start': 0.001469013994897484, 'l2_reg': 0.003946398428144479}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=3 , gnn_step_dropout=0.30, classifier_dropout=0.20. Trainable parameters: 89985
+Epoch 001/005 | Train Loss: 0.6799 | Val Loss: 0.6726 | Val AUROC: 0.6216 | LR: 0.009842
+Epoch 002/005 | Train Loss: 0.6708 | Val Loss: 0.6770 | Val AUROC: 0.6180 | LR: 0.009842
+Epoch 003/005 | Train Loss: 0.6708 | Val Loss: 0.6647 | Val AUROC: 0.6339 | LR: 0.009842
+Epoch 004/005 | Train Loss: 0.6629 | Val Loss: 0.6587 | Val AUROC: 0.6420 | LR: 0.009842
+Epoch 005/005 | Train Loss: 0.6605 | Val Loss: 0.6562 | Val AUROC: 0.6405 | LR: 0.009842
+[I 2026-03-07 05:08:35,694] Trial 16 finished with value: 0.6561671081648932 and parameters: {'input_net_dropout': 0.15000000000000002, 'internal_dimensions': 64, 'num_edge_convs': 3, 'gnn_step_dropout': 0.30000000000000004, 'classifier_dropout': 0.2, 'lr_start': 0.009842287870004969, 'l2_reg': 0.0009101170703572189}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=32 , num_edge_convs=4 , gnn_step_dropout=0.10, classifier_dropout=0.30. Trainable parameters: 28641
+Epoch 001/005 | Train Loss: 0.6907 | Val Loss: 0.6669 | Val AUROC: 0.6382 | LR: 0.005142
+Epoch 002/005 | Train Loss: 0.6460 | Val Loss: 0.6096 | Val AUROC: 0.7228 | LR: 0.005142
+Epoch 003/005 | Train Loss: 0.6135 | Val Loss: 0.5916 | Val AUROC: 0.7438 | LR: 0.005142
+Epoch 004/005 | Train Loss: 0.5866 | Val Loss: 0.6127 | Val AUROC: 0.7439 | LR: 0.005142
+Epoch 005/005 | Train Loss: 0.5719 | Val Loss: 0.5404 | Val AUROC: 0.8032 | LR: 0.005142
+[I 2026-03-07 05:13:22,676] Trial 17 finished with value: 0.5403647576967875 and parameters: {'input_net_dropout': 0.0, 'internal_dimensions': 32, 'num_edge_convs': 4, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.30000000000000004, 'lr_start': 0.005142226163117482, 'l2_reg': 0.00020642062911715975}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=2 , gnn_step_dropout=0.40, classifier_dropout=0.10. Trainable parameters: 68929
+Epoch 001/005 | Train Loss: 0.6704 | Val Loss: 0.6652 | Val AUROC: 0.6781 | LR: 0.001026
+Epoch 002/005 | Train Loss: 0.6115 | Val Loss: 0.6560 | Val AUROC: 0.7297 | LR: 0.001026
+Epoch 003/005 | Train Loss: 0.5576 | Val Loss: 0.8108 | Val AUROC: 0.7072 | LR: 0.001026
+Epoch 004/005 | Train Loss: 0.5136 | Val Loss: 0.8102 | Val AUROC: 0.7940 | LR: 0.001026
+Epoch 005/005 | Train Loss: 0.4907 | Val Loss: 0.8807 | Val AUROC: 0.7368 | LR: 0.001026
+[I 2026-03-07 05:18:59,452] Trial 18 finished with value: 0.6560093682077196 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 2, 'gnn_step_dropout': 0.4, 'classifier_dropout': 0.1, 'lr_start': 0.001025597328864203, 'l2_reg': 4.058899550979177e-05}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=128, num_edge_convs=6 , gnn_step_dropout=0.20, classifier_dropout=0.40. Trainable parameters: 603265
+Epoch 001/005 | Train Loss: 0.6985 | Val Loss: 0.6738 | Val AUROC: 0.6230 | LR: 0.002715
+Epoch 002/005 | Train Loss: 0.6662 | Val Loss: 0.6558 | Val AUROC: 0.6426 | LR: 0.002715
+Epoch 003/005 | Train Loss: 0.6424 | Val Loss: 0.6270 | Val AUROC: 0.6772 | LR: 0.002715
+Epoch 004/005 | Train Loss: 0.6205 | Val Loss: 0.6327 | Val AUROC: 0.7311 | LR: 0.002715
+Epoch 005/005 | Train Loss: 0.5864 | Val Loss: 0.5545 | Val AUROC: 0.7870 | LR: 0.002715
+[I 2026-03-07 06:24:04,370] Trial 19 finished with value: 0.5545359721713596 and parameters: {'input_net_dropout': 0.2, 'internal_dimensions': 128, 'num_edge_convs': 6, 'gnn_step_dropout': 0.2, 'classifier_dropout': 0.4, 'lr_start': 0.0027146027264305884, 'l2_reg': 0.0005359190877148294}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=32 , num_edge_convs=3 , gnn_step_dropout=0.30, classifier_dropout=0.20. Trainable parameters: 23233
+Epoch 001/005 | Train Loss: 0.6756 | Val Loss: 0.6519 | Val AUROC: 0.6450 | LR: 0.005565
+Epoch 002/005 | Train Loss: 0.6345 | Val Loss: 0.5691 | Val AUROC: 0.7741 | LR: 0.005565
+Epoch 003/005 | Train Loss: 0.5746 | Val Loss: 0.5175 | Val AUROC: 0.8238 | LR: 0.005565
+Epoch 004/005 | Train Loss: 0.5363 | Val Loss: 0.4924 | Val AUROC: 0.8522 | LR: 0.005565
+Epoch 005/005 | Train Loss: 0.5193 | Val Loss: 0.5178 | Val AUROC: 0.8597 | LR: 0.005565
+[I 2026-03-07 06:28:27,124] Trial 20 finished with value: 0.49244717298613655 and parameters: {'input_net_dropout': 0.0, 'internal_dimensions': 32, 'num_edge_convs': 3, 'gnn_step_dropout': 0.30000000000000004, 'classifier_dropout': 0.2, 'lr_start': 0.005565038859271899, 'l2_reg': 0.0020209150212505177}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=32 , num_edge_convs=3 , gnn_step_dropout=0.30, classifier_dropout=0.20. Trainable parameters: 23233
+Epoch 001/005 | Train Loss: 0.6751 | Val Loss: 0.6266 | Val AUROC: 0.6824 | LR: 0.005589
+Epoch 002/005 | Train Loss: 0.6378 | Val Loss: 0.6146 | Val AUROC: 0.7243 | LR: 0.005589
+Epoch 003/005 | Train Loss: 0.6083 | Val Loss: 0.6173 | Val AUROC: 0.7524 | LR: 0.005589
+Epoch 004/005 | Train Loss: 0.5821 | Val Loss: 0.6255 | Val AUROC: 0.7588 | LR: 0.005589
+Epoch 005/005 | Train Loss: 0.5602 | Val Loss: 0.5782 | Val AUROC: 0.7901 | LR: 0.005589
+[I 2026-03-07 06:32:49,950] Trial 21 finished with value: 0.5781977582507664 and parameters: {'input_net_dropout': 0.0, 'internal_dimensions': 32, 'num_edge_convs': 3, 'gnn_step_dropout': 0.30000000000000004, 'classifier_dropout': 0.2, 'lr_start': 0.005588804201173189, 'l2_reg': 0.0017972108005155098}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=32 , num_edge_convs=3 , gnn_step_dropout=0.30, classifier_dropout=0.20. Trainable parameters: 23233
+Epoch 001/005 | Train Loss: 0.6777 | Val Loss: 0.6593 | Val AUROC: 0.6336 | LR: 0.003714
+Epoch 002/005 | Train Loss: 0.6386 | Val Loss: 0.6241 | Val AUROC: 0.7419 | LR: 0.003714
+Epoch 003/005 | Train Loss: 0.5968 | Val Loss: 0.5782 | Val AUROC: 0.7587 | LR: 0.003714
+Epoch 004/005 | Train Loss: 0.5632 | Val Loss: 0.5626 | Val AUROC: 0.7870 | LR: 0.003714
+Epoch 005/005 | Train Loss: 0.5354 | Val Loss: 0.5130 | Val AUROC: 0.8299 | LR: 0.003714
+[I 2026-03-07 06:37:12,855] Trial 22 finished with value: 0.5129520406193203 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 32, 'num_edge_convs': 3, 'gnn_step_dropout': 0.30000000000000004, 'classifier_dropout': 0.2, 'lr_start': 0.0037144270959466492, 'l2_reg': 0.0005892320685800844}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=32 , num_edge_convs=4 , gnn_step_dropout=0.30, classifier_dropout=0.10. Trainable parameters: 28641
+Epoch 001/005 | Train Loss: 0.6743 | Val Loss: 0.6472 | Val AUROC: 0.6859 | LR: 0.001901
+Epoch 002/005 | Train Loss: 0.6151 | Val Loss: 0.5737 | Val AUROC: 0.7884 | LR: 0.001901
+Epoch 003/005 | Train Loss: 0.5411 | Val Loss: 0.7347 | Val AUROC: 0.7890 | LR: 0.001901
+Epoch 004/005 | Train Loss: 0.5063 | Val Loss: 1.0267 | Val AUROC: 0.7179 | LR: 0.001901
+Epoch 005/005 | Train Loss: 0.4779 | Val Loss: 0.8288 | Val AUROC: 0.7683 | LR: 0.001901
+[I 2026-03-07 06:41:59,758] Trial 23 finished with value: 0.5737343431048924 and parameters: {'input_net_dropout': 0.0, 'internal_dimensions': 32, 'num_edge_convs': 4, 'gnn_step_dropout': 0.30000000000000004, 'classifier_dropout': 0.1, 'lr_start': 0.0019014113011327697, 'l2_reg': 0.0025533215587583533}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=32 , num_edge_convs=2 , gnn_step_dropout=0.40, classifier_dropout=0.20. Trainable parameters: 17825
+Epoch 001/005 | Train Loss: 0.6751 | Val Loss: 0.6561 | Val AUROC: 0.6392 | LR: 0.006878
+Epoch 002/005 | Train Loss: 0.6644 | Val Loss: 0.6246 | Val AUROC: 0.6697 | LR: 0.006878
+Epoch 003/005 | Train Loss: 0.6322 | Val Loss: 0.6058 | Val AUROC: 0.7363 | LR: 0.006878
+Epoch 004/005 | Train Loss: 0.6224 | Val Loss: 0.5893 | Val AUROC: 0.7427 | LR: 0.006878
+Epoch 005/005 | Train Loss: 0.6074 | Val Loss: 0.6175 | Val AUROC: 0.7464 | LR: 0.006878
+[I 2026-03-07 06:45:58,058] Trial 24 finished with value: 0.5893058567047119 and parameters: {'input_net_dropout': 0.0, 'internal_dimensions': 32, 'num_edge_convs': 2, 'gnn_step_dropout': 0.4, 'classifier_dropout': 0.2, 'lr_start': 0.00687823955545553, 'l2_reg': 0.005883513610058599}. Best is trial 1 with value: 0.4782316610283322.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.20, classifier_dropout=0.10. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6705 | Val Loss: 0.6415 | Val AUROC: 0.6514 | LR: 0.002465
+Epoch 002/005 | Train Loss: 0.6081 | Val Loss: 0.5588 | Val AUROC: 0.7893 | LR: 0.002465
+Epoch 003/005 | Train Loss: 0.5326 | Val Loss: 0.4773 | Val AUROC: 0.8561 | LR: 0.002465
+Epoch 004/005 | Train Loss: 0.4877 | Val Loss: 0.5806 | Val AUROC: 0.8405 | LR: 0.002465
+Epoch 005/005 | Train Loss: 0.4636 | Val Loss: 0.5064 | Val AUROC: 0.8453 | LR: 0.002465
+[I 2026-03-07 06:55:14,037] Trial 25 finished with value: 0.4773211587005191 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 5, 'gnn_step_dropout': 0.2, 'classifier_dropout': 0.1, 'lr_start': 0.0024650494236688972, 'l2_reg': 0.009544922033070625}. Best is trial 25 with value: 0.4773211587005191.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6694 | Val Loss: 0.6260 | Val AUROC: 0.7053 | LR: 0.001064
+Epoch 002/005 | Train Loss: 0.5948 | Val Loss: 0.5588 | Val AUROC: 0.7866 | LR: 0.001064
+Epoch 003/005 | Train Loss: 0.5311 | Val Loss: 0.4903 | Val AUROC: 0.8638 | LR: 0.001064
+Epoch 004/005 | Train Loss: 0.4972 | Val Loss: 0.4470 | Val AUROC: 0.8766 | LR: 0.001064
+Epoch 005/005 | Train Loss: 0.4528 | Val Loss: 0.4491 | Val AUROC: 0.8762 | LR: 0.001064
+[I 2026-03-07 07:04:39,746] Trial 26 finished with value: 0.4470297316710154 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 5, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.0010641894413176002, 'l2_reg': 0.008975219477587861}. Best is trial 26 with value: 0.4470297316710154.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=6 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 153153
+Epoch 001/005 | Train Loss: 0.6698 | Val Loss: 0.6160 | Val AUROC: 0.7233 | LR: 0.001039
+Epoch 002/005 | Train Loss: 0.5780 | Val Loss: 0.5280 | Val AUROC: 0.8303 | LR: 0.001039
+Epoch 003/005 | Train Loss: 0.5070 | Val Loss: 0.5067 | Val AUROC: 0.8674 | LR: 0.001039
+Epoch 004/005 | Train Loss: 0.4788 | Val Loss: 0.5216 | Val AUROC: 0.8822 | LR: 0.001039
+Epoch 005/005 | Train Loss: 0.4522 | Val Loss: 0.5037 | Val AUROC: 0.8655 | LR: 0.001039
+[I 2026-03-07 07:14:48,941] Trial 27 finished with value: 0.5036523576047686 and parameters: {'input_net_dropout': 0.1, 'internal_dimensions': 64, 'num_edge_convs': 6, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.0010394204005117465, 'l2_reg': 0.009930728469527075}. Best is trial 26 with value: 0.4470297316710154.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6680 | Val Loss: 0.6503 | Val AUROC: 0.6686 | LR: 0.002149
+Epoch 002/005 | Train Loss: 0.6107 | Val Loss: 0.5631 | Val AUROC: 0.7774 | LR: 0.002149
+Epoch 003/005 | Train Loss: 0.5350 | Val Loss: 0.4609 | Val AUROC: 0.8640 | LR: 0.002149
+Epoch 004/005 | Train Loss: 0.4774 | Val Loss: 0.4563 | Val AUROC: 0.8762 | LR: 0.002149
+Epoch 005/005 | Train Loss: 0.4444 | Val Loss: 0.5202 | Val AUROC: 0.8814 | LR: 0.002149
+[I 2026-03-07 07:23:44,741] Trial 28 finished with value: 0.4562894762886895 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 5, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.002148630438574693, 'l2_reg': 0.009801645893588087}. Best is trial 26 with value: 0.4470297316710154.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.20, classifier_dropout=0.10. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6681 | Val Loss: 0.6958 | Val AUROC: 0.7128 | LR: 0.002226
+Epoch 002/005 | Train Loss: 0.5842 | Val Loss: 0.5367 | Val AUROC: 0.8079 | LR: 0.002226
+Epoch 003/005 | Train Loss: 0.5096 | Val Loss: 0.8557 | Val AUROC: 0.8130 | LR: 0.002226
+Epoch 004/005 | Train Loss: 0.4826 | Val Loss: 0.9477 | Val AUROC: 0.7787 | LR: 0.002226
+Epoch 005/005 | Train Loss: 0.4618 | Val Loss: 0.8051 | Val AUROC: 0.8337 | LR: 0.002226
+[I 2026-03-07 07:32:52,843] Trial 29 finished with value: 0.5366923484272427 and parameters: {'input_net_dropout': 0.1, 'internal_dimensions': 64, 'num_edge_convs': 5, 'gnn_step_dropout': 0.2, 'classifier_dropout': 0.1, 'lr_start': 0.00222609286840591, 'l2_reg': 0.00928373109307837}. Best is trial 26 with value: 0.4470297316710154.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=6 , gnn_step_dropout=0.20, classifier_dropout=0.10. Trainable parameters: 153153
+Epoch 001/005 | Train Loss: 0.6767 | Val Loss: 0.7463 | Val AUROC: 0.6507 | LR: 0.000783
+Epoch 002/005 | Train Loss: 0.6200 | Val Loss: 0.6423 | Val AUROC: 0.7557 | LR: 0.000783
+Epoch 003/005 | Train Loss: 0.5515 | Val Loss: 0.9035 | Val AUROC: 0.6753 | LR: 0.000783
+Epoch 004/005 | Train Loss: 0.5076 | Val Loss: 1.0074 | Val AUROC: 0.6267 | LR: 0.000783
+Epoch 005/005 | Train Loss: 0.4840 | Val Loss: 0.7572 | Val AUROC: 0.7855 | LR: 0.000783
+[I 2026-03-07 07:42:47,659] Trial 30 finished with value: 0.6423306619856093 and parameters: {'input_net_dropout': 0.15000000000000002, 'internal_dimensions': 64, 'num_edge_convs': 6, 'gnn_step_dropout': 0.2, 'classifier_dropout': 0.1, 'lr_start': 0.0007829321332129441, 'l2_reg': 0.004005705653973872}. Best is trial 26 with value: 0.4470297316710154.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6729 | Val Loss: 0.6270 | Val AUROC: 0.6993 | LR: 0.001278
+Epoch 002/005 | Train Loss: 0.6019 | Val Loss: 0.6471 | Val AUROC: 0.7802 | LR: 0.001278
+Epoch 003/005 | Train Loss: 0.5266 | Val Loss: 0.5410 | Val AUROC: 0.8369 | LR: 0.001278
+Epoch 004/005 | Train Loss: 0.4740 | Val Loss: 0.4839 | Val AUROC: 0.8626 | LR: 0.001278
+Epoch 005/005 | Train Loss: 0.4507 | Val Loss: 0.4592 | Val AUROC: 0.8890 | LR: 0.001278
+[I 2026-03-07 07:51:55,088] Trial 31 finished with value: 0.4592049340142144 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 5, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.0012778393099592011, 'l2_reg': 0.0055660190815544726}. Best is trial 26 with value: 0.4470297316710154.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6738 | Val Loss: 0.6443 | Val AUROC: 0.6812 | LR: 0.002235
+Epoch 002/005 | Train Loss: 0.6205 | Val Loss: 0.5788 | Val AUROC: 0.7671 | LR: 0.002235
+Epoch 003/005 | Train Loss: 0.5449 | Val Loss: 0.5995 | Val AUROC: 0.8406 | LR: 0.002235
+Epoch 004/005 | Train Loss: 0.4951 | Val Loss: 0.6516 | Val AUROC: 0.8308 | LR: 0.002235
+Epoch 005/005 | Train Loss: 0.4676 | Val Loss: 0.4791 | Val AUROC: 0.8773 | LR: 0.002235
+[I 2026-03-07 08:00:52,693] Trial 32 finished with value: 0.4791358067194621 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 5, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.002234968397230346, 'l2_reg': 0.005566444180354275}. Best is trial 26 with value: 0.4470297316710154.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6750 | Val Loss: 0.6289 | Val AUROC: 0.6941 | LR: 0.001183
+Epoch 002/005 | Train Loss: 0.5574 | Val Loss: 0.4768 | Val AUROC: 0.8575 | LR: 0.001183
+Epoch 003/005 | Train Loss: 0.4966 | Val Loss: 0.4601 | Val AUROC: 0.8729 | LR: 0.001183
+Epoch 004/005 | Train Loss: 0.4619 | Val Loss: 0.4351 | Val AUROC: 0.8845 | LR: 0.001183
+Epoch 005/005 | Train Loss: 0.4399 | Val Loss: 0.4292 | Val AUROC: 0.9000 | LR: 0.001183
+[I 2026-03-07 08:10:18,742] Trial 33 finished with value: 0.4291813532511393 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 5, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.001183371058248967, 'l2_reg': 0.0034603907242824134}. Best is trial 33 with value: 0.4291813532511393.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=6 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 153153
+Epoch 001/005 | Train Loss: 0.6761 | Val Loss: 0.6413 | Val AUROC: 0.6787 | LR: 0.000663
+Epoch 002/005 | Train Loss: 0.5968 | Val Loss: 0.5656 | Val AUROC: 0.8042 | LR: 0.000663
+Epoch 003/005 | Train Loss: 0.5431 | Val Loss: 0.6257 | Val AUROC: 0.7741 | LR: 0.000663
+Epoch 004/005 | Train Loss: 0.5009 | Val Loss: 0.8489 | Val AUROC: 0.7549 | LR: 0.000663
+Epoch 005/005 | Train Loss: 0.4742 | Val Loss: 0.8306 | Val AUROC: 0.8107 | LR: 0.000663
+[I 2026-03-07 08:21:07,086] Trial 34 finished with value: 0.5656137602594163 and parameters: {'input_net_dropout': 0.1, 'internal_dimensions': 64, 'num_edge_convs': 6, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.0006630880999769213, 'l2_reg': 0.0032502729992656882}. Best is trial 33 with value: 0.4291813532511393.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=7 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 174209
+Epoch 001/005 | Train Loss: 0.6692 | Val Loss: 0.6073 | Val AUROC: 0.7023 | LR: 0.001245
+Epoch 002/005 | Train Loss: 0.5958 | Val Loss: 0.5465 | Val AUROC: 0.7974 | LR: 0.001245
+Epoch 003/005 | Train Loss: 0.5348 | Val Loss: 0.7811 | Val AUROC: 0.7671 | LR: 0.001245
+Epoch 004/005 | Train Loss: 0.4873 | Val Loss: 0.8275 | Val AUROC: 0.8079 | LR: 0.001245
+Epoch 005/005 | Train Loss: 0.4572 | Val Loss: 0.5048 | Val AUROC: 0.8745 | LR: 0.001245
+[I 2026-03-07 08:33:10,239] Trial 35 finished with value: 0.5048424160745408 and parameters: {'input_net_dropout': 0.1, 'internal_dimensions': 64, 'num_edge_convs': 7, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.0012454616742813582, 'l2_reg': 0.006341582106290413}. Best is trial 33 with value: 0.4291813532511393.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6667 | Val Loss: 0.6277 | Val AUROC: 0.7191 | LR: 0.000531
+Epoch 002/005 | Train Loss: 0.5842 | Val Loss: 0.5521 | Val AUROC: 0.8257 | LR: 0.000531
+Epoch 003/005 | Train Loss: 0.5194 | Val Loss: 0.5548 | Val AUROC: 0.8420 | LR: 0.000531
+Epoch 004/005 | Train Loss: 0.4898 | Val Loss: 0.5985 | Val AUROC: 0.8143 | LR: 0.000531
+Epoch 005/005 | Train Loss: 0.4641 | Val Loss: 0.5349 | Val AUROC: 0.8590 | LR: 0.000531
+[I 2026-03-07 08:42:02,701] Trial 36 finished with value: 0.5348507643010881 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 5, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.0005312423767447443, 'l2_reg': 0.001466006537633792}. Best is trial 33 with value: 0.4291813532511393.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6848 | Val Loss: 0.7044 | Val AUROC: 0.6351 | LR: 0.000270
+Epoch 002/005 | Train Loss: 0.6244 | Val Loss: 0.6799 | Val AUROC: 0.6902 | LR: 0.000270
+Epoch 003/005 | Train Loss: 0.5860 | Val Loss: 0.6812 | Val AUROC: 0.7286 | LR: 0.000270
+Epoch 004/005 | Train Loss: 0.5603 | Val Loss: 0.8185 | Val AUROC: 0.6683 | LR: 0.000270
+Epoch 005/005 | Train Loss: 0.5422 | Val Loss: 0.7979 | Val AUROC: 0.6947 | LR: 0.000270
+[I 2026-03-07 08:50:42,419] Trial 37 finished with value: 0.6798653270933364 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 5, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.00027044426692078355, 'l2_reg': 0.0028845711875129915}. Best is trial 33 with value: 0.4291813532511393.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=6 , gnn_step_dropout=0.10, classifier_dropout=0.20. Trainable parameters: 153153
+Epoch 001/005 | Train Loss: 0.6864 | Val Loss: 0.6671 | Val AUROC: 0.6335 | LR: 0.000888
+Epoch 002/005 | Train Loss: 0.6408 | Val Loss: 0.5744 | Val AUROC: 0.7672 | LR: 0.000888
+Epoch 003/005 | Train Loss: 0.5592 | Val Loss: 0.5035 | Val AUROC: 0.8385 | LR: 0.000888
+Epoch 004/005 | Train Loss: 0.5161 | Val Loss: 0.5170 | Val AUROC: 0.8559 | LR: 0.000888
+Epoch 005/005 | Train Loss: 0.4797 | Val Loss: 0.7492 | Val AUROC: 0.8336 | LR: 0.000888
+[I 2026-03-07 09:00:45,172] Trial 38 finished with value: 0.5034813425805834 and parameters: {'input_net_dropout': 0.1, 'internal_dimensions': 64, 'num_edge_convs': 6, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.2, 'lr_start': 0.000888285729756764, 'l2_reg': 0.0043330795028942255}. Best is trial 33 with value: 0.4291813532511393.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=4 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 111041
+Epoch 001/005 | Train Loss: 0.6712 | Val Loss: 0.6154 | Val AUROC: 0.7117 | LR: 0.001250
+Epoch 002/005 | Train Loss: 0.5598 | Val Loss: 0.5662 | Val AUROC: 0.8129 | LR: 0.001250
+Epoch 003/005 | Train Loss: 0.4966 | Val Loss: 0.4793 | Val AUROC: 0.8783 | LR: 0.001250
+Epoch 004/005 | Train Loss: 0.4648 | Val Loss: 0.5602 | Val AUROC: 0.8477 | LR: 0.001250
+Epoch 005/005 | Train Loss: 0.4402 | Val Loss: 0.5949 | Val AUROC: 0.8592 | LR: 0.001250
+[I 2026-03-07 09:08:41,274] Trial 39 finished with value: 0.47932491244210135 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 4, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.001249651546182362, 'l2_reg': 0.006833087902455689}. Best is trial 33 with value: 0.4291813532511393.
+Initialized GNNModel with: internal_dimensions=128, num_edge_convs=7 , gnn_step_dropout=0.20, classifier_dropout=0.10. Trainable parameters: 686337
+Epoch 001/005 | Train Loss: 0.6698 | Val Loss: 0.8330 | Val AUROC: 0.6490 | LR: 0.000374
+Epoch 002/005 | Train Loss: 0.6159 | Val Loss: 0.8406 | Val AUROC: 0.6158 | LR: 0.000374
+Epoch 003/005 | Train Loss: 0.5527 | Val Loss: 0.9536 | Val AUROC: 0.6065 | LR: 0.000374
+Epoch 004/005 | Train Loss: 0.5037 | Val Loss: 1.2053 | Val AUROC: 0.5183 | LR: 0.000374
+Epoch 005/005 | Train Loss: 0.4785 | Val Loss: 1.3636 | Val AUROC: 0.6137 | LR: 0.000374
+[I 2026-03-07 10:35:35,507] Trial 40 finished with value: 0.8330403895907932 and parameters: {'input_net_dropout': 0.15000000000000002, 'internal_dimensions': 128, 'num_edge_convs': 7, 'gnn_step_dropout': 0.2, 'classifier_dropout': 0.1, 'lr_start': 0.00037391950006393504, 'l2_reg': 0.0043827837957541894}. Best is trial 33 with value: 0.4291813532511393.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.20, classifier_dropout=0.10. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6714 | Val Loss: 0.6112 | Val AUROC: 0.7138 | LR: 0.002061
+Epoch 002/005 | Train Loss: 0.5796 | Val Loss: 0.6826 | Val AUROC: 0.7949 | LR: 0.002061
+Epoch 003/005 | Train Loss: 0.5106 | Val Loss: 0.6492 | Val AUROC: 0.8353 | LR: 0.002061
+Epoch 004/005 | Train Loss: 0.4747 | Val Loss: 0.5478 | Val AUROC: 0.8468 | LR: 0.002061
+Epoch 005/005 | Train Loss: 0.4439 | Val Loss: 0.6709 | Val AUROC: 0.8529 | LR: 0.002061
+[I 2026-03-07 10:44:21,972] Trial 41 finished with value: 0.5478381774160597 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 5, 'gnn_step_dropout': 0.2, 'classifier_dropout': 0.1, 'lr_start': 0.0020613870514037944, 'l2_reg': 0.009330887979281818}. Best is trial 33 with value: 0.4291813532511393.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=6 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 153153
+Epoch 001/005 | Train Loss: 0.6692 | Val Loss: 0.6115 | Val AUROC: 0.7296 | LR: 0.002669
+Epoch 002/005 | Train Loss: 0.6002 | Val Loss: 0.6137 | Val AUROC: 0.8056 | LR: 0.002669
+Epoch 003/005 | Train Loss: 0.5232 | Val Loss: 0.5191 | Val AUROC: 0.8467 | LR: 0.002669
+Epoch 004/005 | Train Loss: 0.4850 | Val Loss: 0.4685 | Val AUROC: 0.8696 | LR: 0.002669
+Epoch 005/005 | Train Loss: 0.4560 | Val Loss: 0.5249 | Val AUROC: 0.8827 | LR: 0.002669
+[I 2026-03-07 10:55:00,340] Trial 42 finished with value: 0.4685220539569855 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 6, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.002669117997175113, 'l2_reg': 0.007600919989657114}. Best is trial 33 with value: 0.4291813532511393.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=6 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 153153
+Epoch 001/005 | Train Loss: 0.6689 | Val Loss: 0.7091 | Val AUROC: 0.6686 | LR: 0.001316
+Epoch 002/005 | Train Loss: 0.5783 | Val Loss: 0.5313 | Val AUROC: 0.8413 | LR: 0.001316
+Epoch 003/005 | Train Loss: 0.5004 | Val Loss: 0.5194 | Val AUROC: 0.8655 | LR: 0.001316
+Epoch 004/005 | Train Loss: 0.4732 | Val Loss: 0.5763 | Val AUROC: 0.8240 | LR: 0.001316
+Epoch 005/005 | Train Loss: 0.4473 | Val Loss: 0.7732 | Val AUROC: 0.8310 | LR: 0.001316
+[I 2026-03-07 11:05:03,953] Trial 43 finished with value: 0.5193635844124688 and parameters: {'input_net_dropout': 0.1, 'internal_dimensions': 64, 'num_edge_convs': 6, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.0013161399690296333, 'l2_reg': 0.007221476423785519}. Best is trial 33 with value: 0.4291813532511393.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=6 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 153153
+Epoch 001/005 | Train Loss: 0.6738 | Val Loss: 0.6112 | Val AUROC: 0.7227 | LR: 0.002969
+Epoch 002/005 | Train Loss: 0.5848 | Val Loss: 0.5725 | Val AUROC: 0.7902 | LR: 0.002969
+Epoch 003/005 | Train Loss: 0.5333 | Val Loss: 0.5380 | Val AUROC: 0.8377 | LR: 0.002969
+Epoch 004/005 | Train Loss: 0.4921 | Val Loss: 0.5245 | Val AUROC: 0.8577 | LR: 0.002969
+Epoch 005/005 | Train Loss: 0.4696 | Val Loss: 0.4405 | Val AUROC: 0.8741 | LR: 0.002969
+[I 2026-03-07 11:16:00,159] Trial 44 finished with value: 0.4404663772583008 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 6, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.002969344733316182, 'l2_reg': 0.003036549420481832}. Best is trial 33 with value: 0.4291813532511393.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=7 , gnn_step_dropout=0.10, classifier_dropout=0.20. Trainable parameters: 174209
+Epoch 001/005 | Train Loss: 0.6881 | Val Loss: 0.6604 | Val AUROC: 0.6352 | LR: 0.003233
+Epoch 002/005 | Train Loss: 0.6423 | Val Loss: 0.6048 | Val AUROC: 0.7460 | LR: 0.003233
+Epoch 003/005 | Train Loss: 0.5987 | Val Loss: 0.5556 | Val AUROC: 0.7866 | LR: 0.003233
+Epoch 004/005 | Train Loss: 0.5597 | Val Loss: 0.5212 | Val AUROC: 0.8286 | LR: 0.003233
+Epoch 005/005 | Train Loss: 0.5211 | Val Loss: 0.5066 | Val AUROC: 0.8491 | LR: 0.003233
+[I 2026-03-07 11:27:15,638] Trial 45 finished with value: 0.5066151540014479 and parameters: {'input_net_dropout': 0.25, 'internal_dimensions': 64, 'num_edge_convs': 7, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.2, 'lr_start': 0.003232772777206515, 'l2_reg': 0.0029170425200198626}. Best is trial 33 with value: 0.4291813532511393.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=4 , gnn_step_dropout=0.10, classifier_dropout=0.50. Trainable parameters: 111041
+Epoch 001/005 | Train Loss: 0.7049 | Val Loss: 0.6921 | Val AUROC: 0.6054 | LR: 0.001623
+Epoch 002/005 | Train Loss: 0.6860 | Val Loss: 0.6706 | Val AUROC: 0.6276 | LR: 0.001623
+Epoch 003/005 | Train Loss: 0.6668 | Val Loss: 0.6486 | Val AUROC: 0.6554 | LR: 0.001623
+Epoch 004/005 | Train Loss: 0.6436 | Val Loss: 0.5927 | Val AUROC: 0.7208 | LR: 0.001623
+Epoch 005/005 | Train Loss: 0.6090 | Val Loss: 0.5806 | Val AUROC: 0.7800 | LR: 0.001623
+[I 2026-03-07 11:35:22,081] Trial 46 finished with value: 0.5805586374600729 and parameters: {'input_net_dropout': 0.1, 'internal_dimensions': 64, 'num_edge_convs': 4, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.5, 'lr_start': 0.0016229807147653682, 'l2_reg': 0.0016465554831432076}. Best is trial 33 with value: 0.4291813532511393.
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6754 | Val Loss: 0.6921 | Val AUROC: 0.6988 | LR: 0.000643
+
+
+33
+26
+25
+1
+
+33
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6750 | Val Loss: 0.6289 | Val AUROC: 0.6941 | LR: 0.001183
+Epoch 002/005 | Train Loss: 0.5574 | Val Loss: 0.4768 | Val AUROC: 0.8575 | LR: 0.001183
+Epoch 003/005 | Train Loss: 0.4966 | Val Loss: 0.4601 | Val AUROC: 0.8729 | LR: 0.001183
+Epoch 004/005 | Train Loss: 0.4619 | Val Loss: 0.4351 | Val AUROC: 0.8845 | LR: 0.001183
+Epoch 005/005 | Train Loss: 0.4399 | Val Loss: 0.4292 | Val AUROC: 0.9000 | LR: 0.001183
+[I 2026-03-07 08:10:18,742] Trial 33 finished with value: 0.4291813532511393 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 5, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.001183371058248967, 'l2_reg': 0.0034603907242824134}. Best is trial 33 with value: 0.4291813532511393.
+
+26
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6694 | Val Loss: 0.6260 | Val AUROC: 0.7053 | LR: 0.001064
+Epoch 002/005 | Train Loss: 0.5948 | Val Loss: 0.5588 | Val AUROC: 0.7866 | LR: 0.001064
+Epoch 003/005 | Train Loss: 0.5311 | Val Loss: 0.4903 | Val AUROC: 0.8638 | LR: 0.001064
+Epoch 004/005 | Train Loss: 0.4972 | Val Loss: 0.4470 | Val AUROC: 0.8766 | LR: 0.001064
+Epoch 005/005 | Train Loss: 0.4528 | Val Loss: 0.4491 | Val AUROC: 0.8762 | LR: 0.001064
+[I 2026-03-07 07:04:39,746] Trial 26 finished with value: 0.4470297316710154 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 5, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.0010641894413176002, 'l2_reg': 0.008975219477587861}. Best is trial 26 with value: 0.4470297316710154.
+
+25
+Initialized GNNModel with: internal_dimensions=64 , num_edge_convs=5 , gnn_step_dropout=0.20, classifier_dropout=0.10. Trainable parameters: 132097
+Epoch 001/005 | Train Loss: 0.6705 | Val Loss: 0.6415 | Val AUROC: 0.6514 | LR: 0.002465
+Epoch 002/005 | Train Loss: 0.6081 | Val Loss: 0.5588 | Val AUROC: 0.7893 | LR: 0.002465
+Epoch 003/005 | Train Loss: 0.5326 | Val Loss: 0.4773 | Val AUROC: 0.8561 | LR: 0.002465
+Epoch 004/005 | Train Loss: 0.4877 | Val Loss: 0.5806 | Val AUROC: 0.8405 | LR: 0.002465
+Epoch 005/005 | Train Loss: 0.4636 | Val Loss: 0.5064 | Val AUROC: 0.8453 | LR: 0.002465
+[I 2026-03-07 06:55:14,037] Trial 25 finished with value: 0.4773211587005191 and parameters: {'input_net_dropout': 0.05, 'internal_dimensions': 64, 'num_edge_convs': 5, 'gnn_step_dropout': 0.2, 'classifier_dropout': 0.1, 'lr_start': 0.0024650494236688972, 'l2_reg': 0.009544922033070625}. Best is trial 25 with value: 0.4773211587005191.
+
+1
+Initialized GNNModel with: internal_dimensions=32 , num_edge_convs=3 , gnn_step_dropout=0.10, classifier_dropout=0.10. Trainable parameters: 23233
+Epoch 001/005 | Train Loss: 0.6512 | Val Loss: 0.5607 | Val AUROC: 0.7903 | LR: 0.001275
+Epoch 002/005 | Train Loss: 0.5556 | Val Loss: 0.6469 | Val AUROC: 0.7838 | LR: 0.001275
+Epoch 003/005 | Train Loss: 0.5121 | Val Loss: 0.4941 | Val AUROC: 0.8673 | LR: 0.001275
+Epoch 004/005 | Train Loss: 0.4936 | Val Loss: 0.5416 | Val AUROC: 0.8577 | LR: 0.001275
+Epoch 005/005 | Train Loss: 0.4744 | Val Loss: 0.4782 | Val AUROC: 0.8609 | LR: 0.001275
+[I 2026-03-07 00:26:14,551] Trial 1 finished with value: 0.4782316610283322 and parameters: {'input_net_dropout': 0.0, 'internal_dimensions': 32, 'num_edge_convs': 3, 'gnn_step_dropout': 0.1, 'classifier_dropout': 0.1, 'lr_start': 0.0012750205470426156, 'l2_reg': 0.00027105896122657806}. Best is trial 1 with value: 0.4782316610283322.

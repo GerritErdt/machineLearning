@@ -330,16 +330,16 @@ def learn(model, train_loader, val_loader, test_loader, epochs, lr_start, l2_reg
 def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight):
     config = {
         # model parameters
-        "input_net_dropout": trial.suggest_float("input_net_dropout", 0.00, 0.25, step=0.05), 
+        "input_net_dropout": trial.suggest_float("input_net_dropout", 0.00, 0.2, step=0.05), 
         "internal_dimensions": trial.suggest_categorical("internal_dimensions", [32, 64, 128]), # 2er potences, which is better for memory-alignment
-        "num_edge_convs": trial.suggest_int("num_edge_convs", 2, 8, step=1),
+        "num_edge_convs": trial.suggest_int("num_edge_convs", 3, 6, step=1),
         "gnn_step_dropout": trial.suggest_float("gnn_step_dropout", 0.1, 0.5, step=0.1),
         "classifier_dropout": trial.suggest_float("classifier_dropout", 0.1, 0.5, step=0.1),
         
         # training parameters
-        "lr_start": trial.suggest_float("lr_start", 1e-4, 1e-2, log=True),
-        "l2_reg": trial.suggest_float("l2_reg", 1e-5, 1e-2, log=True)
-    }
+        "lr_start": trial.suggest_float("lr_start", 5e-3, 5e-3, log=True),
+        "l2_reg": trial.suggest_float("l2_reg", 1e-4, 1e-2, log=True)
+    }5
     
     model = GNNModel(
         input_net_dropout=config["input_net_dropout"],

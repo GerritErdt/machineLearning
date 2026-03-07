@@ -3,14 +3,14 @@ import src.models.model as model_def
 import src.data_loading.data_loading as dl
 import src.helper_functions.helper_functions as hf
 
-def main(trials=50, trial_epochs=5, fraction_for_hpo=0.25, final_data_size=1e5, final_epochs=10):
+def main(trials=100, trial_epochs=25, fraction_for_hpo=0.4, final_data_size=1e5, final_epochs=50):
     hf.set_all_seeds()
     
     # data loading
     full_train_loader, full_test_loader, full_val_loader, pos_weight = dl.get_stereo_clean_dataset(int(final_data_size), batch_size=128) # load the full training set
     # split a fraction of the training set for HPO, to prevent data leakage
-    hpo_train_loader = dl.get_subset_from_loader(full_train_loader, fraction_for_hpo * 0.7)
-    hpo_val_loader = dl.get_subset_from_loader(full_val_loader, fraction_for_hpo * 0.3)
+    hpo_train_loader = dl.get_subset_from_loader(full_train_loader, fraction_for_hpo)
+    hpo_val_loader = dl.get_subset_from_loader(full_val_loader, fraction_for_hpo)
 
     study = optuna.create_study(direction="minimize", pruner=optuna.pruners.MedianPruner(n_warmup_steps=5))
     study.optimize(
