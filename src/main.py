@@ -3,7 +3,7 @@ import src.models.model as model_def
 import src.data_loading.data_loading as dl
 import src.helper_functions.helper_functions as hf
 
-def main(trials=100, trial_epochs=25, fraction_for_hpo=0.4, final_data_size=1e5, final_epochs=50):
+def main(trials=50, trial_epochs=25, fraction_for_hpo=0.4, final_data_size=1e5, final_epochs=50):
     hf.set_all_seeds()
     
     # data loading
@@ -52,7 +52,6 @@ def main(trials=100, trial_epochs=25, fraction_for_hpo=0.4, final_data_size=1e5,
     trained_model, history = model_def.learn(
         model=model_def.GNNModel(
             input_net_dropout=trial.params["input_net_dropout"],
-            internal_dimensions=trial.params["internal_dimensions"],
             num_edge_convs=trial.params["num_edge_convs"],
             gnn_step_dropout=trial.params["gnn_step_dropout"],
             classifier_dropout=trial.params["classifier_dropout"]
@@ -70,14 +69,13 @@ def main(trials=100, trial_epochs=25, fraction_for_hpo=0.4, final_data_size=1e5,
 
 def just_train():
     hf.set_all_seeds()
-    train_loader, test_loader, val_loader, pos_weight = dl.get_stereo_clean_dataset(50000, batch_size=128)
+    train_loader, test_loader, val_loader, pos_weight = dl.get_stereo_clean_dataset(10000, batch_size=128)
     
     ml_model = model_def.GNNModel(
-        input_net_dropout=0.05,
-        internal_dimensions=64,
-        num_edge_convs=3,
-        gnn_step_dropout=0.25,
-        classifier_dropout=0.4
+        input_net_dropout=0.0,
+        num_edge_convs=4,
+        gnn_step_dropout=0.1,
+        classifier_dropout=0.3
     )
     
     trained_model, history = model_def.learn(
@@ -86,13 +84,13 @@ def just_train():
         val_loader=val_loader,
         test_loader=test_loader, 
         epochs=5,
-        lr_start=1e-3,
-        l2_reg=1e-3, 
+        lr_start=0.003,
+        l2_reg=0.003, 
         pos_weight=pos_weight,
     )
     
     hf.plot_history(history)
         
 if __name__ == "__main__":
-    # just_train()
-    main()
+    just_train()
+    # main()

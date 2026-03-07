@@ -1,4 +1,4 @@
-import sys
+import gc
 import numpy as np
 import polars as pl
 import sklearn.model_selection as ms
@@ -82,13 +82,13 @@ class MagicStereoDataset(data.Dataset):
             return "Unknown"
 
 
-def compute_camera_topology(num_valid_pixels=1038):
+def compute_camera_topology(num_valid_pixels=1039):
     camera = magic.Camera()
     sources = []
     targets = []
     positions = []
 
-    for i in range(num_valid_pixels + 1):
+    for i in range(num_valid_pixels - 1):
         # Topologie (Kanten)
         neighbors = camera.get_pixel_neighbors(i)
         for j in neighbors:
@@ -104,28 +104,37 @@ def compute_camera_topology(num_valid_pixels=1038):
 
     return edge_index, pos
 
+def load_stereo_clean_images(num_samples=None, gamma_file="./data/magic-gammas-chunked.parquet", proton_file="./data/magic-protons-chunked.parquet"):
 
-def load_stereo_clean_images(num_samples=10000, num_valid_pixels=1038, random_sampling=False, gamma_file="./data/magic-gammas-chunked.parquet", proton_file="./data/magic-protons-chunked.parquet"):
+    def extract_images(file_path):
+        # Lazy Loading der benötigten Spalten
+        ds = pl.scan_parquet(file_path).select(["clean_image_m1", "clean_image_m2"])
+        if num_samples:
+            ds = ds.head(num_samples)
+
+        df = ds.collect()
+
+        # Konvertierung in 2D NumPy-Arrays (N, Pixels)
+        # np.vstack ist notwendig, da Polars List-Spalten als Object-Arrays exportiert
+        m1 = np.vstack(df["clean_image_m1"].to_numpy())
+        m2 = np.vstack(df["clean_image_m2"].to_numpy())
+
+        del df  # Explizit löschen, um RAM freizugeben
+        gc.collect()
+        return m1, m2
+
     try:
-        # Lazy scan, will not load in the whole dataset
-        gammas = pl.read_parquet(gamma_file).sample(num_samples, seed=42) if random_sampling else pl.scan_parquet(gamma_file).head(num_samples).collect()
-        protons = pl.read_parquet(proton_file).sample(num_samples, seed=42) if random_sampling else pl.scan_parquet(proton_file).head(num_samples).collect()
+        # Erst Protonen laden und konvertieren
+        p_m1, p_m2 = extract_images(proton_file)
 
-        # Reshape the clean image data into 2D arrays
-        protons_clean_image_m1 = np.vstack(protons["clean_image_m1"].to_numpy())[:, :num_valid_pixels + 1]
-        protons_clean_image_m2 = np.vstack(protons["clean_image_m2"].to_numpy())[:, :num_valid_pixels + 1]
-        gammas_clean_image_m1 = np.vstack(gammas["clean_image_m1"].to_numpy())[:, :num_valid_pixels + 1]
-        gammas_clean_image_m2 = np.vstack(gammas["clean_image_m2"].to_numpy())[:, :num_valid_pixels + 1]
+        # Dann Gammas laden und konvertieren
+        g_m1, g_m2 = extract_images(gamma_file)
 
-        assert (protons_clean_image_m1.shape[0] == protons_clean_image_m2.shape[0] == gammas_clean_image_m1.shape[0]
-                == gammas_clean_image_m2.shape[0]), "Mismatch in number of samples between datasets"
-        assert (protons_clean_image_m1.shape[1] == num_valid_pixels + 1), f"Expected {num_valid_pixels + 1} pixels in clean_image_m1"
+        return p_m1, p_m2, g_m1, g_m2
 
-        return protons_clean_image_m1, protons_clean_image_m2, gammas_clean_image_m1, gammas_clean_image_m2
     except Exception as e:
-        print(f"Error loading data: {e}")
-        sys.exit(1)
-
+        print(f"Fehler: {e}")
+        return None
 
 def preprocess_images(p_m1, p_m2, g_m1, g_m2, train_split=0.7):
     x_m1 = np.vstack((p_m1, g_m1))
@@ -144,8 +153,11 @@ def preprocess_images(p_m1, p_m2, g_m1, g_m2, train_split=0.7):
 
 
 def get_stereo_clean_dataset(num_samples=10000, batch_size=32):
+    print("Loading and preprocessing data...")
     protons_m1, protons_m2, gammas_m1, gammas_m2 = load_stereo_clean_images(num_samples)
+    print("Data loaded. Preprocessing...")
     m1_train, m1_test, m1_val, m2_train, m2_test, m2_val, y_train, y_test, y_val = preprocess_images(protons_m1, protons_m2, gammas_m1, gammas_m2)
+    print("Preprocessing complete.")
 
     num_proton = (y_train == 0).sum()
     num_gamma = (y_train == 1).sum()
@@ -158,9 +170,15 @@ def get_stereo_clean_dataset(num_samples=10000, batch_size=32):
     test_dataset = MagicStereoDataset(m1_test, m2_test, y_test, train_min, train_max)
     val_dataset = MagicStereoDataset(m1_val, m2_val, y_val, train_min, train_max)
 
-    train_loader = tg_loader.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
-    test_loader = tg_loader.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
-    val_loader = tg_loader.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
+    train_loader = tg_loader.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4, pin_memory=True)
+    test_loader = tg_loader.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
+    val_loader = tg_loader.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
+    
+    print("Data loaded successfully:")
+    print(f"  Training samples: {len(train_dataset)}")
+    print(f"  Validation samples: {len(val_dataset)}")
+    print(f"  Test samples: {len(test_dataset)}")
+    print(f"  Positive class weight: {pos_weight:.2f}")
 
     return train_loader, test_loader, val_loader, pos_weight
 
@@ -186,3 +204,6 @@ def get_subset_from_loader(full_loader, fraction, shuffle=True):
     )
 
     return subset_loader
+
+if __name__ == "__main__":
+    load_stereo_clean_images(num_samples=None)
