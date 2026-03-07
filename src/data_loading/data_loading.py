@@ -10,77 +10,154 @@ import torch_geometric.loader as tg_loader
 from src.magicdl import magic
 
 
+# class MagicStereoDataset(data.Dataset):
+    # def __init__(self, m1, m2, y, train_min, train_max, epsilon=1e-4):
+    #     assert m1.shape[0] == m2.shape[0] == y.shape[0], "Mismatch in number of samples between M1, M2 and labels"
+
+    #     self.images_m1 = torch.from_numpy(m1).float()
+    #     self.images_m2 = torch.from_numpy(m2).float()
+    #     self.labels = torch.tensor(y, dtype=torch.float32).view(-1, 1)
+    #     self.intensity_min = train_min
+    #     self.intensity_max = train_max
+    #     self.intensity_span = self.intensity_max - self.intensity_min + epsilon
+    #     self.sqrt_min = 2.0 * np.sqrt(0.375)
+    #     self.sqrt_span = 2.0 * np.sqrt(max(0.0, self.intensity_max) + 0.375) - self.sqrt_min + epsilon
+
+    #     # use the most common value across all images as parameter for the mask generation
+    #     self.background_intensity = 0.0
+
+    #     # Topologie wird einmalig berechnet und als Klassenattribut gespeichert.
+    #     num_pixels = self.images_m1.shape[1]
+    #     self.edge_index, self.pos = compute_camera_topology(num_valid_pixels=num_pixels - 1)
+
+    # def __len__(self):
+    #     return self.images_m1.shape[0]
+
+    # def __getitem__(self, idx, epsilon=1e-4):
+    #     # 1. Early Fusion
+    #     x_fused = torch.stack([self.images_m1[idx], self.images_m2[idx]], dim=1)
+    #     y = self.labels[idx]
+
+    #     # 2. Maske für aktive Knoten erstellen (True, wenn M1 ODER M2 ungleich 0)
+    #     # epsilon-Vergleich ist bei floats sicherer als exakt == 0
+    #     mask = (x_fused[:, 0].abs() > self.background_intensity) | (x_fused[:, 1].abs() > self.background_intensity)
+    #     if not mask.any():  # special case: the mask would be empty. In this case, keep the brightest pixel
+    #         max_idx = (x_fused[:, 0].abs() + x_fused[:, 1].abs()).argmax()
+    #         mask[max_idx] = True
+
+    #     # 3. Indizes der überlebenden Knoten ermitteln
+    #     active_nodes = mask.nonzero(as_tuple=False).view(-1)
+
+    #     # 4. Subgraph extrahieren und Kanten neu nummerieren lassen
+    #     edge_index, _ = tg_utils.subgraph(active_nodes, self.edge_index, relabel_nodes=True)
+
+    #     # 5. Features und Positionen auf aktive Knoten reduzieren
+    #     x_sparse = x_fused[mask]
+    #     pos_sparse = self.pos[mask]
+
+    #     # create additional non-linear features
+    #     m1_sparse = x_sparse[:, 0]
+    #     m2_sparse = x_sparse[:, 1]
+
+    #     m1_clipped = torch.clamp(m1_sparse, min=0.0)
+    #     m2_clipped = torch.clamp(m2_sparse, min=0.0)
+
+    #     sqrt_m1 = 2 * torch.sqrt(m1_clipped + 0.375)
+    #     sqrt_m2 = 2 * torch.sqrt(m2_clipped + 0.375)
+
+    #     x_features = torch.stack([m1_sparse, m2_sparse, sqrt_m1, sqrt_m2], dim=1)
+    #     x_features[:, :2] = (x_features[:, :2] - self.intensity_min) / self.intensity_span
+    #     x_features[:, 2:4] = (x_features[:, 2:4] - self.sqrt_min) / (self.sqrt_span + epsilon)
+
+    #     # Graph MUSS nun Topologie enthalten, da sie dynamisch ist
+    #     return tg_data.Data(x=x_features, edge_index=edge_index, pos=pos_sparse, y=y)
+
+    # def get_label_name(self, label):
+    #     val = label.item() if isinstance(label, torch.Tensor) else label
+    #     if val == 0:
+    #         return "Proton"
+    #     elif val == 1:
+    #         return "Gamma"
+    #     else:
+    #         return "Unknown"
+
+import torch
+from torch.utils import data
+import torch_geometric.data as tg_data
+import torch_geometric.utils as tg_utils
+import numpy as np
+
+
 class MagicStereoDataset(data.Dataset):
     def __init__(self, m1, m2, y, train_min, train_max, epsilon=1e-4):
         assert m1.shape[0] == m2.shape[0] == y.shape[0], "Mismatch in number of samples between M1, M2 and labels"
 
-        self.images_m1 = torch.from_numpy(m1).float()
-        self.images_m2 = torch.from_numpy(m2).float()
-        self.labels = torch.tensor(y, dtype=torch.float32).view(-1, 1)
-        self.intensity_min = train_min
-        self.intensity_max = train_max
-        self.intensity_span = self.intensity_max - self.intensity_min + epsilon
-        self.sqrt_min = 2.0 * np.sqrt(0.375)
-        self.sqrt_span = 2.0 * np.sqrt(max(0.0, self.intensity_max) + 0.375) - self.sqrt_min + epsilon
+        images_m1 = torch.from_numpy(m1).float()
+        images_m2 = torch.from_numpy(m2).float()
+        labels = torch.tensor(y, dtype=torch.float32).view(-1, 1)
 
-        # use the most common value across all images as parameter for the mask generation
-        self.background_intensity = 0.0
+        intensity_min = train_min
+        intensity_span = train_max - train_min + epsilon
+        sqrt_min = 2.0 * np.sqrt(0.375)
+        sqrt_span = 2.0 * np.sqrt(max(0.0, train_max) + 0.375) - sqrt_min + epsilon
+        background_intensity = 0.0
 
-        # Topologie wird einmalig berechnet und als Klassenattribut gespeichert.
-        num_pixels = self.images_m1.shape[1]
-        self.edge_index, self.pos = compute_camera_topology(num_valid_pixels=num_pixels - 1)
+        num_pixels = images_m1.shape[1]
+        global_edge_index, global_pos = compute_camera_topology(num_valid_pixels=num_pixels - 1)
 
-    def __len__(self):
-        return self.images_m1.shape[0]
-
-    def __getitem__(self, idx, epsilon=1e-4):
-        # 1. Early Fusion
-        x_fused = torch.stack([self.images_m1[idx], self.images_m2[idx]], dim=1)
-        y = self.labels[idx]
-
-        # 2. Maske für aktive Knoten erstellen (True, wenn M1 ODER M2 ungleich 0)
-        # epsilon-Vergleich ist bei floats sicherer als exakt == 0
-        mask = (x_fused[:, 0].abs() > self.background_intensity) | (x_fused[:, 1].abs() > self.background_intensity)
-        if not mask.any():  # special case: the mask would be empty. In this case, keep the brightest pixel
-            max_idx = (x_fused[:, 0].abs() + x_fused[:, 1].abs()).argmax()
-            mask[max_idx] = True
-
-        # 3. Indizes der überlebenden Knoten ermitteln
-        active_nodes = mask.nonzero(as_tuple=False).view(-1)
-
-        # 4. Subgraph extrahieren und Kanten neu nummerieren lassen
-        edge_index, _ = tg_utils.subgraph(active_nodes, self.edge_index, relabel_nodes=True)
-
-        # 5. Features und Positionen auf aktive Knoten reduzieren
-        x_sparse = x_fused[mask]
-        pos_sparse = self.pos[mask]
-
-        # create additional non-linear features
-        m1_sparse = x_sparse[:, 0]
-        m2_sparse = x_sparse[:, 1]
-
-        m1_clipped = torch.clamp(m1_sparse, min=0.0)
-        m2_clipped = torch.clamp(m2_sparse, min=0.0)
+        # 1. Globale Feature-Berechnung (Vektorisierung)
+        # Anstatt Clipping und Wurzelziehen pro Graph durchzuführen,
+        # geschieht dies hochoptimiert für den gesamten Datensatz auf einmal.
+        m1_clipped = torch.clamp(images_m1, min=0.0)
+        m2_clipped = torch.clamp(images_m2, min=0.0)
 
         sqrt_m1 = 2 * torch.sqrt(m1_clipped + 0.375)
         sqrt_m2 = 2 * torch.sqrt(m2_clipped + 0.375)
 
-        x_features = torch.stack([m1_sparse, m2_sparse, sqrt_m1, sqrt_m2], dim=1)
-        x_features[:, :2] = (x_features[:, :2] - self.intensity_min) / self.intensity_span
-        x_features[:, 2:4] = (x_features[:, 2:4] - self.sqrt_min) / (self.sqrt_span + epsilon)
+        # Erstellung des globalen Feature-Tensors der Form [N, Num_Pixels, 4]
+        all_features = torch.stack([images_m1, images_m2, sqrt_m1, sqrt_m2], dim=-1)
 
-        # Graph MUSS nun Topologie enthalten, da sie dynamisch ist
-        return tg_data.Data(x=x_features, edge_index=edge_index, pos=pos_sparse, y=y)
+        # Globale Normalisierung
+        all_features[:, :, :2] = (all_features[:, :, :2] - intensity_min) / intensity_span
+        all_features[:, :, 2:4] = (all_features[:, :, 2:4] - sqrt_min) / (sqrt_span + epsilon)
+
+        # 2. Graphen-Vorausberechnung (Caching)
+        self.graphs = []
+        num_samples = images_m1.shape[0]
+
+        for idx in range(num_samples):
+            m1_img = images_m1[idx]
+            m2_img = images_m2[idx]
+
+            mask = (m1_img.abs() > background_intensity) | (m2_img.abs() > background_intensity)
+            if not mask.any():
+                max_idx = (m1_img.abs() + m2_img.abs()).argmax()
+                mask[max_idx] = True
+
+            active_nodes = mask.nonzero(as_tuple=False).view(-1)
+
+            # Subgraph-Extraktion ist die teuerste Operation. Einmalig in __init__ ausführen.
+            edge_index, _ = tg_utils.subgraph(active_nodes, global_edge_index, relabel_nodes=True)
+
+            x_sparse = all_features[idx][mask]
+            pos_sparse = global_pos[mask]
+
+            self.graphs.append(tg_data.Data(
+                x=x_sparse,
+                edge_index=edge_index,
+                pos=pos_sparse,
+                y=labels[idx]
+            ))
+
+    def __len__(self):
+        return len(self.graphs)
+
+    def __getitem__(self, idx):
+        return self.graphs[idx]
 
     def get_label_name(self, label):
         val = label.item() if isinstance(label, torch.Tensor) else label
-        if val == 0:
-            return "Proton"
-        elif val == 1:
-            return "Gamma"
-        else:
-            return "Unknown"
-
+        return {0: "Proton", 1: "Gamma"}.get(val, "Unknown")
 
 def compute_camera_topology(num_valid_pixels=1038):
     camera = magic.Camera()
@@ -158,9 +235,9 @@ def get_stereo_clean_dataset(num_samples=10000, batch_size=32):
     test_dataset = MagicStereoDataset(m1_test, m2_test, y_test, train_min, train_max)
     val_dataset = MagicStereoDataset(m1_val, m2_val, y_val, train_min, train_max)
 
-    train_loader = tg_loader.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
-    test_loader = tg_loader.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
-    val_loader = tg_loader.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
+    train_loader = tg_loader.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
+    test_loader = tg_loader.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=True)
+    val_loader = tg_loader.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0, pin_memory=True)
 
     return train_loader, test_loader, val_loader, pos_weight
 
