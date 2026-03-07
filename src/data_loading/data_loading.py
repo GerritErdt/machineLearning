@@ -1,3 +1,4 @@
+from typing import List, Union, Optional
 import sys
 import numpy as np
 import polars as pl
@@ -157,3 +158,26 @@ def get_stereo_clean_dataset(num_samples = 10000, batch_size = 32):
     val_loader = tg_loader.DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
     return train_loader, test_loader, val_loader, pos_weight
+
+
+def get_subset_from_loader(full_loader, fraction, shuffle=True):
+    dataset = full_loader.dataset
+    dataset_size = len(dataset)
+    subset_size = max(int(dataset_size * fraction), 1)  # Mindestens 1 Element
+
+    # 1. Zufällige Indizes generieren
+    indices = torch.randperm(dataset_size)[:subset_size].tolist()
+
+    # 2. Subset erstellen
+    subset = data.Subset(dataset, indices)
+
+    # 3. Neuen PyG DataLoader mit den Parametern des alten Loaders erstellen
+    subset_loader = tg_loader.DataLoader(
+        subset,
+        batch_size=full_loader.batch_size,
+        shuffle=shuffle,  # True für Train, False für Val
+        num_workers=full_loader.num_workers,
+        pin_memory=full_loader.pin_memory
+    )
+
+    return subset_loader

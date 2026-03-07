@@ -113,28 +113,26 @@ def plot_histograms_for_telescopes():
     plt.tight_layout()
     plt.show()
 
+
 def plot_history(history, feature_names=None):
-    # Definition der verbleibenden Metriken
+    # Definition der aktuellen Metriken
     metrics = [
         ("loss", "Loss"),
-        ("f1", "F1-Score"),
-        ("precision", "Precision"),
-        ("recall", "Recall")
+        ("AUROC", "AUROC")
     ]
 
     epochs = range(1, len(history["train_loss"]) + 1)
     last_epoch = epochs[-1]
 
-    # Erstelle ein 2x3 Raster für insgesamt 5 benötigte Plots
-    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-    axes = axes.flatten()
+    # Erstelle ein 1x3 Raster für 2 Metriken + 1 Feature Importance Plot
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
     # Zeitreihen für die Trainings- und Validierungsmetriken plotten
     for i, (key, title) in enumerate(metrics):
         train_vals = history[f"train_{key}"]
         val_vals = history[f"val_{key}"]
 
-        # Testwert ist nur am Ende vorhanden (letztes/einziges Element der Liste)
+        # Testwert ist nur am Ende vorhanden
         test_val = history[f"test_{key}"][-1]
 
         # Train und Val als durchgehende Linien
@@ -150,7 +148,7 @@ def plot_history(history, feature_names=None):
         axes[i].legend()
         axes[i].grid(True, alpha=0.3)
 
-    # Feature Importance als Balkendiagramm im 5. Plot (Index 4) darstellen
+    # Feature Importance als Balkendiagramm im 3. Plot (Index 2) darstellen
     if "feature_importances" in history:
         importances = history["feature_importances"]
         num_features = len(importances)
@@ -158,23 +156,20 @@ def plot_history(history, feature_names=None):
         if feature_names is None or len(feature_names) != num_features:
             feature_names = [f"F{i}" for i in range(num_features)]
 
-        axes[4].bar(feature_names, importances, color='steelblue', zorder=2)
-        axes[4].set_title("Permutation Feature Importance")
-        axes[4].set_xlabel("Features")
-        axes[4].set_ylabel("Delta Loss")  # Angepasst auf die Loss-basierte Berechnung
-        axes[4].grid(axis='y', alpha=0.3, zorder=1)
+        axes[2].bar(feature_names, importances, color='steelblue', zorder=2)
+        axes[2].set_title("Permutation Feature Importance")
+        axes[2].set_xlabel("Features")
+        axes[2].set_ylabel("Delta AUROC")  # Korrigiert auf Delta AUROC
+        axes[2].grid(axis='y', alpha=0.3, zorder=1)
 
         for i, v in enumerate(importances):
-            axes[4].text(i, v, f"{v:.4f}", ha='center', va='bottom', fontsize=9)
+            axes[2].text(i, v, f"{v:.4f}", ha='center', va='bottom', fontsize=9)
     else:
-        axes[4].set_visible(False)
-
-    # Den ungenutzten 6. Subplot verstecken
-    axes[5].set_visible(False)
+        axes[2].set_visible(False)
 
     plt.tight_layout()
     plt.show()
-
+    
 def set_all_seeds(seed=42):
     # 1. Standard Python Random Seed
     random.seed(seed)
