@@ -337,9 +337,9 @@ def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight):
         "classifier_dropout": trial.suggest_float("classifier_dropout", 0.1, 0.5, step=0.1),
         
         # training parameters
-        "lr_start": trial.suggest_float("lr_start", 5e-3, 5e-3, log=True),
+        "lr_start": trial.suggest_float("lr_start", 5e-4, 5e-3, log=True),
         "l2_reg": trial.suggest_float("l2_reg", 1e-4, 1e-2, log=True)
-    }5
+    }
     
     model = GNNModel(
         input_net_dropout=config["input_net_dropout"],
