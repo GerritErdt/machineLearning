@@ -92,5 +92,5 @@ def just_train():
     hf.plot_history(history)
         
 if __name__ == "__main__":
-    just_train()
-    # main()
+    # just_train()
+    main()
