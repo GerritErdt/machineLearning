@@ -6,7 +6,7 @@ import torch.amp as amp
 import optuna
 
 class GNNModel(nn.Module):
-    def __init__(self, input_net_dropout, num_edge_convs, gnn_step_dropout, classifier_dropout, in_channels=4, internal_dimensions=64):
+    def __init__(self, input_net_dropout, num_edge_convs, gnn_step_dropout, classifier_dropout, in_channels=2, internal_dimensions=64):
         super().__init__()
         
         self.hidden_channels = internal_dimensions
@@ -326,14 +326,14 @@ def learn(model, train_loader, val_loader, test_loader, epochs, lr_start, l2_reg
 def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight):
     config = {
         # model parameters
-        "input_net_dropout": trial.suggest_float("input_net_dropout", 0.05, 0.1, step=0.05), 
-        "num_edge_convs": trial.suggest_int("num_edge_convs", 3, 5, step=1),
-        "gnn_step_dropout": trial.suggest_float("gnn_step_dropout", 0.1, 0.2, step=0.1),
+        "input_net_dropout": trial.suggest_float("input_net_dropout", 0.1, 0.5, step=0.1), 
+        "num_edge_convs": trial.suggest_int("num_edge_convs", 3, 6, step=1),
+        "gnn_step_dropout": trial.suggest_float("gnn_step_dropout", 0.2, 0.5, step=0.1),
         "classifier_dropout": trial.suggest_float("classifier_dropout", 0.2, 0.5, step=0.1),
         
         # training parameters
         "lr_start": trial.suggest_float("lr_start", 1e-3, 6e-3, log=True),
-        "l2_reg": trial.suggest_float("l2_reg", 1e-3, 6e-3, log=True)
+        "l2_reg": trial.suggest_float("l2_reg", 1e-3, 1e-2, log=True)
     }
     
     model = GNNModel(

@@ -115,11 +115,13 @@ class MagicStereoDataset(data.Dataset):
         sqrt_m2 = 2 * torch.sqrt(m2_clipped + 0.375)
 
         # Erstellung des globalen Feature-Tensors der Form [N, Num_Pixels, 4]
-        all_features = torch.stack([images_m1, images_m2, sqrt_m1, sqrt_m2], dim=-1)
+        # all_features = torch.stack([images_m1, images_m2, sqrt_m1, sqrt_m2], dim=-1)
+        all_features = torch.stack([sqrt_m1, sqrt_m2], dim=-1)  # Nur die nicht-linearen Features verwenden, da sie besser skaliert sind
 
         # Globale Normalisierung
-        all_features[:, :, :2] = (all_features[:, :, :2] - intensity_min) / intensity_span
-        all_features[:, :, 2:4] = (all_features[:, :, 2:4] - sqrt_min) / (sqrt_span + epsilon)
+        # all_features[:, :, :2] = (all_features[:, :, :2] - intensity_min) / intensity_span
+        # all_features[:, :, 2:4] = (all_features[:, :, 2:4] - sqrt_min) / (sqrt_span + epsilon)
+        all_features = (all_features - sqrt_min) / (sqrt_span + epsilon)
 
         # 2. Graphen-Vorausberechnung (Caching)
         self.graphs = []

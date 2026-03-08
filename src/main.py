@@ -1,16 +1,13 @@
 import optuna
 import src.models.model as model_def
-import src.data_loading.data_loading as dl
+import src.data_loading.data_loading_new as dl
 import src.helper_functions.helper_functions as hf
 
-def main(trials=50, trial_epochs=25, fraction_for_hpo=0.4, final_data_size=1e5, final_epochs=50):
+def main(trials=50, trial_epochs=20, fraction_for_hpo=0.3, final_data_size=None, final_epochs=50):
     hf.set_all_seeds()
     
     # data loading
-    full_train_loader, full_test_loader, full_val_loader, pos_weight = dl.get_stereo_clean_dataset(int(final_data_size), batch_size=128) # load the full training set
-    # split a fraction of the training set for HPO, to prevent data leakage
-    hpo_train_loader = dl.get_subset_from_loader(full_train_loader, fraction_for_hpo)
-    hpo_val_loader = dl.get_subset_from_loader(full_val_loader, fraction_for_hpo)
+    train_loader, val_loader, test_loader, pos_weight, hpo_train_loader, hpo_val_loader = dl.get_stereo_clean_dataset(int(final_data_size) if final_data_size else None, batch_size=128, return_HPO_subset=True, fraction_for_hpo=fraction_for_hpo) 
 
     study = optuna.create_study(direction="minimize", pruner=optuna.pruners.MedianPruner(n_warmup_steps=5))
     study.optimize(
@@ -56,9 +53,9 @@ def main(trials=50, trial_epochs=25, fraction_for_hpo=0.4, final_data_size=1e5, 
             gnn_step_dropout=trial.params["gnn_step_dropout"],
             classifier_dropout=trial.params["classifier_dropout"]
         ), 
-        train_loader=full_train_loader,
-        val_loader=full_val_loader,
-        test_loader=full_test_loader, 
+        train_loader=train_loader,
+        val_loader=val_loader,
+        test_loader=test_loader, 
         epochs=final_epochs,
         lr_start=trial.params["lr_start"],
         l2_reg=trial.params["l2_reg"], 
@@ -69,13 +66,14 @@ def main(trials=50, trial_epochs=25, fraction_for_hpo=0.4, final_data_size=1e5, 
 
 def just_train():
     hf.set_all_seeds()
-    train_loader, test_loader, val_loader, pos_weight = dl.get_stereo_clean_dataset(10000, batch_size=128)
+    # train_loader, test_loader, val_loader, pos_weight = dl.get_stereo_clean_dataset(None, batch_size=128)
+    train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(1000, batch_size=128, train_split=0.7)
     
     ml_model = model_def.GNNModel(
-        input_net_dropout=0.0,
-        num_edge_convs=4,
+        input_net_dropout=0.25,
+        num_edge_convs=5,
         gnn_step_dropout=0.1,
-        classifier_dropout=0.3
+        classifier_dropout=0.2
     )
     
     trained_model, history = model_def.learn(
@@ -84,8 +82,8 @@ def just_train():
         val_loader=val_loader,
         test_loader=test_loader, 
         epochs=5,
-        lr_start=0.003,
-        l2_reg=0.003, 
+        lr_start=0.0012849329978680513,
+        l2_reg=0.0014427968983024913,
         pos_weight=pos_weight,
     )
     
@@ -94,3 +92,4 @@ def just_train():
 if __name__ == "__main__":
     # just_train()
     main()
+    
