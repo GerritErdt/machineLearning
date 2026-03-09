@@ -6,7 +6,7 @@ import torch
 import random
 
 
-def plot_fused_magic_graph(data, label_name="Event"):
+def show_fused_magic_graph(data, label_name="Event"):
     # Topologie und Geometrie direkt aus dem dynamischen data-Objekt beziehen
     pos_np = data.pos.numpy()
     edge_index_np = data.edge_index.numpy()
@@ -61,26 +61,22 @@ def plot_fused_magic_graph(data, label_name="Event"):
     fig.colorbar(scatter_diff, ax=axes[2], orientation='vertical', fraction=0.04, pad=0.04,
                  label='Signal-Differenz')
 
-    plt.tight_layout()
+    # plt.tight_layout()
+
     plt.show()
 
-def show_many_graphs():
+def show_many_graphs(num_plots = 10):
     train_loader, _, _, _= dl.get_stereo_clean_dataset(num_samples=100)
     train_dataset = train_loader.dataset
     edge_index, pos = dl.compute_camera_topology()
 
-    for i in range(100):
+    for i in range(num_plots):
         fused_graph = train_dataset[i]
         label_name = train_dataset.get_label_name(fused_graph.y)
-        print(f"Sample {i}: Label: {label_name}")
-        print(f"Anzahl Knoten: {fused_graph.num_nodes} (sollte < 1138 sein)")
-        print(f"Feature-Shape: {fused_graph.x.shape} (sollte [num_nodes, 2] sein)")
-        print(f"Pos-Shape: {fused_graph.pos.shape} (sollte [num_nodes, 2] sein)")
-        print(f"Maximaler Kanten-Index: {fused_graph.edge_index.max().item()}")
-        plot_fused_magic_graph(fused_graph, label_name)
+        show_fused_magic_graph(fused_graph, label_name)
 
-def plot_histograms_for_telescopes():
-    proton_m1, proton_m2, gamma_m1, gamma_m2 = dl.load_stereo_clean_images(num_samples=40000, random_sampling=False)
+def show_histograms_for_telescopes(num_samples=50000):
+    proton_m1, proton_m2, gamma_m1, gamma_m2 = dl.load_stereo_clean_images(num_samples=num_samples)
     
     # 2D Arrays in 1D Arrays umwandeln für pixelweise Verteilung
     proton_m1_flat = proton_m1.flatten()
@@ -114,7 +110,7 @@ def plot_histograms_for_telescopes():
     plt.show()
 
 
-def plot_history(history, feature_names=None):
+def show_history(history, feature_names=None):
     # Definition der aktuellen Metriken
     metrics = [
         ("loss", "Loss"),

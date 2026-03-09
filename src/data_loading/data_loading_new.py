@@ -11,37 +11,35 @@ from src.magicdl import magic
 
 
 class MagicStereoDataset(data.Dataset):
-    def __init__(self, m1, m2, y, train_min, train_max, epsilon=1e-4, num_pixels=1039):
+    def __init__(self, m1, m2, y, train_min, train_max, epsilon=1e-6, num_pixels=1039):
         assert m1.shape[0] == m2.shape[0] == y.shape[0], "Mismatch in number of samples between M1, M2 and labels"
         
         m1 = m1.astype(np.float32)[:, :num_pixels]
         m2 = m2.astype(np.float32)[:, :num_pixels]
 
-        images_m1 = torch.from_numpy(m1).float()
-        images_m2 = torch.from_numpy(m2).float() 
+        transformed_m1 = torch.from_numpy(m1).float().clamp_(min=0.0).sqrt_()
+        transformed_m2 = torch.from_numpy(m2).float().clamp_(min=0.0).sqrt_()
         labels = torch.tensor(y, dtype=torch.float32).view(-1, 1)
 
-        intensity_min = train_min
-        intensity_span = train_max - train_min + epsilon
-        sqrt_min = 2.0 * np.sqrt(0.375)
-        sqrt_span = 2.0 * np.sqrt(max(0.0, train_max) + 0.375) - sqrt_min + epsilon
+        sqrt_min = 0.0
+        sqrt_span = np.sqrt(max(0.0, train_max)) - sqrt_min + epsilon
         background_intensity = 0.0
+        
+        print("sqrt_min:", sqrt_min)
+        print("sqrt_span:", sqrt_span)
+        print("sqrt max: ", np.sqrt(train_max))
+        print("epsilon:", epsilon)
+        print("Background intensity threshold:", background_intensity)
+        print("Median of M1:", np.median(transformed_m1.numpy()))
+        print("Median of M2:", np.median(transformed_m2.numpy()))
+        print("Modal value of M1:", pl.Series(transformed_m1.flatten()).mode()[0])
+        print("Modal value of M2:", pl.Series(m2.flatten()).mode()[0])
 
-        num_pixels = 1039  # Anzahl der gültigen Pixel pro Bild (ohne Padding)
         global_edge_index, global_pos = compute_camera_topology(num_valid_pixels=num_pixels)
-
-        # 1. Globale Feature-Berechnung (Vektorisierung)
-        # Anstatt Clipping und Wurzelziehen pro Graph durchzuführen,
-        # geschieht dies hochoptimiert für den gesamten Datensatz auf einmal.
-        m1_clipped = torch.clamp(images_m1, min=0.0)
-        m2_clipped = torch.clamp(images_m2, min=0.0)
-
-        sqrt_m1 = 2 * torch.sqrt(m1_clipped + 0.375)
-        sqrt_m2 = 2 * torch.sqrt(m2_clipped + 0.375)
 
         # Erstellung des globalen Feature-Tensors der Form [N, Num_Pixels, 4]
         # all_features = torch.stack([images_m1, images_m2, sqrt_m1, sqrt_m2], dim=-1)
-        all_features = torch.stack([sqrt_m1, sqrt_m2], dim=-1)  # Nur die nicht-linearen Features verwenden, da sie besser skaliert sind
+        all_features = torch.stack([transformed_m1, transformed_m2], dim=-1)  # Nur die nicht-linearen Features verwenden, da sie besser skaliert sind
 
         # Globale Normalisierung
         # all_features[:, :, :2] = (all_features[:, :, :2] - intensity_min) / intensity_span
@@ -50,11 +48,11 @@ class MagicStereoDataset(data.Dataset):
 
         # 2. Graphen-Vorausberechnung (Caching)
         self.graphs = []
-        num_samples = images_m1.shape[0]
+        num_samples = transformed_m1.shape[0]
 
         for idx in range(num_samples):
-            m1_img = images_m1[idx]
-            m2_img = images_m2[idx]
+            m1_img = transformed_m1[idx]
+            m2_img = transformed_m2[idx]
 
             mask = (m1_img.abs() > background_intensity) | (m2_img.abs() > background_intensity)
             if not mask.any():

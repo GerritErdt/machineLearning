@@ -13,7 +13,7 @@ class GNNModel(nn.Module):
         self.num_edge_convs = num_edge_convs
         self.out_channels = 1
         
-        # input transformation, project from four dimensions (M1, M2, sqrt(M1) and sqrt(M2)) to hidden_channels dimensions for the GNN layers
+        # input transformation, project from two dimensions (sqrt(M1) and sqrt(M2)) to hidden_channels dimensions for the GNN layers
         self.input_net = nn.Sequential(
                 nn.Linear(in_channels, internal_dimensions),
                 nn.LayerNorm(internal_dimensions),
@@ -249,7 +249,7 @@ def train_one_epoch(model, data_loader, device, history, metrics, optimizer, sca
         history[f"train_{key}"].append(metric.compute().item())
         metric.reset()
 
-def learn(model, train_loader, val_loader, test_loader, epochs, lr_start, l2_reg, pos_weight, lr_patience=5, early_stopping_patience=10, trial=None):
+def learn(model, train_loader, val_loader, test_loader, epochs, lr_start, l2_reg, pos_weight, lr_patience=5, early_stopping_patience=15, trial=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # auto-detect GPU-availability
     model = model.to(device) 
     scaler = amp.GradScaler(enabled=(device.type == 'cuda'))  # automatic mixed precision for faster training on GPU
@@ -257,7 +257,7 @@ def learn(model, train_loader, val_loader, test_loader, epochs, lr_start, l2_reg
     
     criterion = nn.BCEWithLogitsLoss(pos_weight=weight_tensor)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr_start, weight_decay=l2_reg)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.75, patience=lr_patience, min_lr=1e-6) 
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.25, patience=lr_patience, min_lr=1e-6) 
     
     metrics_train = {
         "AUROC": tm.BinaryAUROC().to(device),
@@ -326,21 +326,23 @@ def learn(model, train_loader, val_loader, test_loader, epochs, lr_start, l2_reg
 def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight):
     config = {
         # model parameters
-        "input_net_dropout": trial.suggest_float("input_net_dropout", 0.1, 0.5, step=0.1), 
+        "input_net_dropout": trial.suggest_float("input_net_dropout", 0.4, 0.6, step=0.1), 
         "num_edge_convs": trial.suggest_int("num_edge_convs", 3, 6, step=1),
-        "gnn_step_dropout": trial.suggest_float("gnn_step_dropout", 0.2, 0.5, step=0.1),
-        "classifier_dropout": trial.suggest_float("classifier_dropout", 0.2, 0.5, step=0.1),
+        "gnn_step_dropout": trial.suggest_float("gnn_step_dropout", 0.4, 0.6, step=0.1),
+        "classifier_dropout": trial.suggest_float("classifier_dropout", 0.4, 0.6, step=0.1),
+        "internal_dimensions": trial.suggest_categorical("internal_dimensions", [16, 32, 64]),
         
         # training parameters
         "lr_start": trial.suggest_float("lr_start", 1e-3, 6e-3, log=True),
-        "l2_reg": trial.suggest_float("l2_reg", 1e-3, 1e-2, log=True)
+        "l2_reg": trial.suggest_float("l2_reg", 1e-3, 1e-1, log=True)
     }
     
     model = GNNModel(
         input_net_dropout=config["input_net_dropout"],
         num_edge_convs=config["num_edge_convs"],
         gnn_step_dropout=config["gnn_step_dropout"],
-        classifier_dropout=config["classifier_dropout"]
+        classifier_dropout=config["classifier_dropout"],
+        internal_dimensions=config["internal_dimensions"]
     )
     
     trained_model, history = learn(

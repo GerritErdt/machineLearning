@@ -1,5 +1,6 @@
 import optuna
 import src.models.model as model_def
+import src.models.baseline_model as baseline_model_def
 import src.data_loading.data_loading_new as dl
 import src.helper_functions.helper_functions as hf
 
@@ -62,18 +63,19 @@ def main(trials=50, trial_epochs=20, fraction_for_hpo=0.3, final_data_size=None,
         pos_weight=pos_weight,
     )
     
-    hf.plot_history(history)
+    hf.show_history(history)
 
 def just_train():
     hf.set_all_seeds()
     # train_loader, test_loader, val_loader, pos_weight = dl.get_stereo_clean_dataset(None, batch_size=128)
-    train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(1000, batch_size=128, train_split=0.7)
+    train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(None, batch_size=128, train_split=0.7)
     
     ml_model = model_def.GNNModel(
-        input_net_dropout=0.25,
-        num_edge_convs=5,
-        gnn_step_dropout=0.1,
-        classifier_dropout=0.2
+        input_net_dropout=0.1,
+        num_edge_convs=6,
+        gnn_step_dropout=0.2,
+        classifier_dropout=0.4,
+        internal_dimensions=32
     )
     
     trained_model, history = model_def.learn(
@@ -82,14 +84,33 @@ def just_train():
         val_loader=val_loader,
         test_loader=test_loader, 
         epochs=5,
-        lr_start=0.0012849329978680513,
-        l2_reg=0.0014427968983024913,
+        lr_start=0.001070182334329632,
+        l2_reg=0.0024421538962973656,
         pos_weight=pos_weight,
     )
     
-    hf.plot_history(history)
+    hf.show_history(history)
+
+def just_train_baseline():
+    hf.set_all_seeds()
+    train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(None, batch_size=128, train_split=0.7)
+
+    ml_model = baseline_model_def.BaselineGNN()
+
+    history = baseline_model_def.train_and_evaluate(
+        model=ml_model, 
+        train_loader=train_loader,
+        val_loader=val_loader,
+        test_loader=test_loader, 
+        epochs=15,
+        lr=0.001,
+        weight_decay=1e-4,
+        device='cuda'
+    )
+
+    hf.show_history(history)
         
 if __name__ == "__main__":
-    # just_train()
     main()
-    
+    # just_train()
+    # just_train_baseline()
