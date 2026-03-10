@@ -24,16 +24,6 @@ class MagicStereoDataset(data.Dataset):
         sqrt_min = 0.0
         sqrt_span = np.sqrt(max(0.0, train_max)) - sqrt_min + epsilon
         background_intensity = 0.0
-        
-        print("sqrt_min:", sqrt_min)
-        print("sqrt_span:", sqrt_span)
-        print("sqrt max: ", np.sqrt(train_max))
-        print("epsilon:", epsilon)
-        print("Background intensity threshold:", background_intensity)
-        print("Median of M1:", np.median(transformed_m1.numpy()))
-        print("Median of M2:", np.median(transformed_m2.numpy()))
-        print("Modal value of M1:", pl.Series(transformed_m1.flatten()).mode()[0])
-        print("Modal value of M2:", pl.Series(m2.flatten()).mode()[0])
 
         global_edge_index, global_pos = compute_camera_topology(num_valid_pixels=num_pixels)
 
@@ -159,7 +149,7 @@ def preprocess_images(p_m1, p_m2, g_m1, g_m2, train_split=0.7, create_HPO_set=Fa
 
         # 4. HPO-Pool 50/50 in Train und Val aufteilen
         x_m1_hpo_train, x_m1_hpo_val, x_m2_hpo_train, x_m2_hpo_val, y_hpo_train, y_hpo_val = ms.train_test_split(
-            x_m1_hpo_pool, x_m2_hpo_pool, y_hpo_pool, test_size=0.5, random_state=0, stratify=y_hpo_pool, shuffle=True
+            x_m1_hpo_pool, x_m2_hpo_pool, y_hpo_pool, test_size=0.4, random_state=0, stratify=y_hpo_pool, shuffle=True
         )
     
     if create_HPO_set: 
@@ -176,7 +166,8 @@ def get_stereo_clean_dataset(num_samples=10000, batch_size=128, train_split=0.7,
     # m1_train, m1_test, m1_val, m2_train, m2_test, m2_val, y_train, y_test, y_val = preprocess_images(protons_m1, protons_m2, gammas_m1, gammas_m2, )
     m1_train, m1_val, m1_test, m2_train, m2_val, m2_test, y_train, y_val, y_test, hpo_m1_train, hpo_m1_val, hpo_m2_train, hpo_m2_val, y_hpo_train, y_hpo_val = preprocess_images(protons_m1, protons_m2, gammas_m1, gammas_m2, train_split=train_split, create_HPO_set=True, hpo_fraction=fraction_for_hpo)
     gc.collect()
-    print("Preprocessing complete.")
+    
+    print("Computing normalization constants...")
 
     num_proton = (y_train == 0).sum()
     num_gamma = (y_train == 1).sum()
@@ -184,6 +175,8 @@ def get_stereo_clean_dataset(num_samples=10000, batch_size=128, train_split=0.7,
 
     train_min = min(m1_train.min(), m2_train.min())
     train_max = max(m1_train.max(), m2_train.max())
+    
+    print("Creating  datasets and dataloaders...")
 
     train_dataset = MagicStereoDataset(m1_train, m2_train, y_train, train_min, train_max)
     test_dataset = MagicStereoDataset(m1_test, m2_test, y_test, train_min, train_max)

@@ -18,17 +18,21 @@ class BaselineGNN(nn.Module):
         # Einfacher Klassifikator ohne Dropout und LayerNorm
         self.classifier = nn.Sequential(
             nn.Linear(internal_dimensions, internal_dimensions // 2),
-            nn.ReLU(),
+            nn.Sigmoid(),
             nn.Linear(internal_dimensions // 2, self.out_channels)
         )
+        
+        # print number of parameters for debugging
+        total_params = sum(p.numel() for p in self.parameters())
+        print(f"BaselineGNN initialized with {total_params} parameters.")
 
     def forward(self, x, edge_index, batch, num_graphs):
         # GNN-Pass ohne Residual Connections
         x = self.conv1(x, edge_index)
-        x = torch.relu(x)
+        x = torch.sigmoid(x)
 
         x = self.conv2(x, edge_index)
-        x = torch.relu(x)
+        x = torch.sigmoid(x)
 
         # Standard Pooling (nur Mean) statt Jumping Knowledge
         x_pooled = gnn.global_mean_pool(x, batch, size=num_graphs)
@@ -44,7 +48,6 @@ class BaselineGNN(nn.Module):
             probs = torch.sigmoid(logits)
 
         return probs
-
 
 def train_and_evaluate(model, train_loader, val_loader, test_loader, epochs=100, lr=0.01, weight_decay=1e-4, device='cuda'):
     model = model.to(device)

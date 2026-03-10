@@ -79,8 +79,8 @@ class GNNModel(nn.Module):
         self.apply(self._init_weights)
         
         # print network statistics
-        print(f"Initialized GNNModel with: internal_dimensions={internal_dimensions:<3}, num_edge_convs={num_edge_convs:<2}, "\
-              f"gnn_step_dropout={gnn_step_dropout:<4.2f}, classifier_dropout={classifier_dropout:<4.2f}. Trainable parameters: {sum(p.numel() for p in self.parameters() if p.requires_grad)}")
+        print(f"Initialized GNNModel with: input_net_dropout={input_net_dropout:<4.2f}, num_edge_convs={num_edge_convs:<2}, "\
+              f"gnn_step_dropout={gnn_step_dropout:<4.2f}, classifier_dropout={classifier_dropout:<4.2f}, internal_dimensions={internal_dimensions:<3}. Trainable parameters: {sum(p.numel() for p in self.parameters() if p.requires_grad)}", flush=True)
     
     def _init_weights(self, module): 
         if isinstance(module, nn.Linear):
@@ -211,7 +211,7 @@ def grade_model(model, data_loader, device, history, metrics, prefix, criterion)
         history[f"{prefix}_{key}"].append(metric.compute().item())
         metric.reset()
 
-def train_one_epoch(model, data_loader, device, history, metrics, optimizer, scaler, criterion):
+def train_one_epoch(model, data_loader, device, history, metrics, optimizer, scaler, criterion, scheduler):
     model.train()
     total_loss = 0
     total_samples = 0
@@ -236,7 +236,12 @@ def train_one_epoch(model, data_loader, device, history, metrics, optimizer, sca
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=0.75)  # gradient Clipping to prevent exploding/excessive gradients at the beginning of training
         
         scaler.step(optimizer)
+        
+        old_scaler = scaler.get_scale()
         scaler.update()
+        
+        if old_scaler == scaler.get_scale():  # only step the scheduler if the scaler did not have to reduce the scale (which indicates that there were no issues with exploding gradients in this step)
+            scheduler.step()
         
         probs = torch.sigmoid(logits).detach()
         for metric in metrics.values():
@@ -249,15 +254,22 @@ def train_one_epoch(model, data_loader, device, history, metrics, optimizer, sca
         history[f"train_{key}"].append(metric.compute().item())
         metric.reset()
 
-def learn(model, train_loader, val_loader, test_loader, epochs, lr_start, l2_reg, pos_weight, lr_patience=5, early_stopping_patience=15, trial=None):
+def learn(model, train_loader, val_loader, test_loader, epochs, lr_max, l2_reg, pos_weight, early_stopping_patience=15, trial=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # auto-detect GPU-availability
     model = model.to(device) 
     scaler = amp.GradScaler(enabled=(device.type == 'cuda'))  # automatic mixed precision for faster training on GPU
     weight_tensor = torch.tensor([pos_weight], dtype=torch.float32).to(device)
     
     criterion = nn.BCEWithLogitsLoss(pos_weight=weight_tensor)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr_start, weight_decay=l2_reg)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.25, patience=lr_patience, min_lr=1e-6) 
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr_max, weight_decay=l2_reg)
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", factor=0.25, patience=lr_patience, min_lr=1e-6) 
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optimizer, 
+        max_lr=lr_max,
+        epochs=epochs,
+        steps_per_epoch=len(train_loader),
+    )
+    grace_period = int(epochs * 0.4) # the LR scheduler takes some time to ramp up
     
     metrics_train = {
         "AUROC": tm.BinaryAUROC().to(device),
@@ -281,7 +293,7 @@ def learn(model, train_loader, val_loader, test_loader, epochs, lr_start, l2_reg
     best_model = None
     
     for epoch in range(epochs):
-        train_one_epoch(model, train_loader, device, history, metrics_train, optimizer, scaler, criterion)
+        train_one_epoch(model, train_loader, device, history, metrics_train, optimizer, scaler, criterion, scheduler)
     
         # evaluation on val data after each epoch
         grade_model(model, val_loader, device, history, metrics_val, "val", criterion)
@@ -303,14 +315,12 @@ def learn(model, train_loader, val_loader, test_loader, epochs, lr_start, l2_reg
             patience_counter = 0
             best_model = {k: v.cpu().clone() for k, v in model.state_dict().items()}  # save the best model's state_dict
         else:
-            patience_counter += 1
-            
+            if epoch >= grace_period:  # only start counting patience after the grace period
+                patience_counter += 1
             if patience_counter >= early_stopping_patience:
                 print(f"Early stopping triggered after {epoch+1} epochs.")
                 model.load_state_dict(best_model)  # load the best model's weights before stopping
                 break
-
-        scheduler.step(current_val_loss)
     
     model.load_state_dict(best_model)  # ensure the best model is loaded after training loop ends, in case of early stopping
     
@@ -326,23 +336,21 @@ def learn(model, train_loader, val_loader, test_loader, epochs, lr_start, l2_reg
 def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight):
     config = {
         # model parameters
-        "input_net_dropout": trial.suggest_float("input_net_dropout", 0.4, 0.6, step=0.1), 
-        "num_edge_convs": trial.suggest_int("num_edge_convs", 3, 6, step=1),
-        "gnn_step_dropout": trial.suggest_float("gnn_step_dropout", 0.4, 0.6, step=0.1),
-        "classifier_dropout": trial.suggest_float("classifier_dropout", 0.4, 0.6, step=0.1),
-        "internal_dimensions": trial.suggest_categorical("internal_dimensions", [16, 32, 64]),
+        "input_net_dropout": trial.suggest_float("input_net_dropout", 0.1, 0.2, step=0.05), 
+        "num_edge_convs": trial.suggest_int("num_edge_convs", 4, 8, step=1),
+        "gnn_step_dropout": trial.suggest_float("gnn_step_dropout", 0.1, 0.25, step=0.05),
+        "classifier_dropout": trial.suggest_float("classifier_dropout", 0.1, 0.25, step=0.05),
         
         # training parameters
-        "lr_start": trial.suggest_float("lr_start", 1e-3, 6e-3, log=True),
-        "l2_reg": trial.suggest_float("l2_reg", 1e-3, 1e-1, log=True)
+        "lr_max": trial.suggest_float("lr_max", 5e-4, 5e-2, log=True),
+        "l2_reg": trial.suggest_float("l2_reg", 1e-4, 5e-3, log=True)
     }
     
     model = GNNModel(
         input_net_dropout=config["input_net_dropout"],
         num_edge_convs=config["num_edge_convs"],
         gnn_step_dropout=config["gnn_step_dropout"],
-        classifier_dropout=config["classifier_dropout"],
-        internal_dimensions=config["internal_dimensions"]
+        classifier_dropout=config["classifier_dropout"]
     )
     
     trained_model, history = learn(
@@ -351,7 +359,7 @@ def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight):
         val_loader=val_loader,
         test_loader=test_loader,
         epochs=epochs,
-        lr_start=config["lr_start"],
+        lr_max=config["lr_max"],
         l2_reg=config["l2_reg"],
         pos_weight=pos_weight,
         trial=trial
