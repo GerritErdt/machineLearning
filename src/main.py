@@ -4,13 +4,13 @@ import src.models.baseline_model as baseline_model_def
 import src.data_loading.data_loading_new as dl
 import src.helper_functions.helper_functions as hf
 
-def main(trials=100, trial_epochs=25, fraction_for_hpo=0.35, final_data_size=None):
+def main(trials=75, trial_epochs=10, fraction_for_hpo=0.35, final_data_size=None):
     hf.set_all_seeds()
     
     # data loading
     train_loader, val_loader, test_loader, pos_weight, hpo_train_loader, hpo_val_loader = dl.get_stereo_clean_dataset(int(final_data_size) if final_data_size else None, batch_size=128, return_HPO_subset=True, fraction_for_hpo=fraction_for_hpo) 
     warmup_epochs = int(trial_epochs * 0.4)  # the LR scheduler takes some time to ramp up, so we give it a warmup period before pruning can kick in
-    final_epochs = int(2 * trial_epochs * len(hpo_train_loader) / len(train_loader)) # empirically found, provides a good scale-up
+    final_epochs = max(1, int(2 * trial_epochs * len(hpo_train_loader) / len(train_loader)))  # empirically found, provides a good scale-up
     print(f"Using {final_epochs} epochs for final training based on {trial_epochs} trial epochs and dataset size ratio.")
     
     sampler = optuna.samplers.TPESampler(seed=42, multivariate=True)
@@ -103,7 +103,7 @@ def just_train():
 
 def just_train_baseline():
     hf.set_all_seeds()
-    train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(None, batch_size=128, train_split=0.7)
+    train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(int(1e4), batch_size=128, train_split=0.7)
 
     ml_model = baseline_model_def.BaselineGNN()
 
@@ -112,7 +112,7 @@ def just_train_baseline():
         train_loader=train_loader,
         val_loader=val_loader,
         test_loader=test_loader, 
-        epochs=10,
+        epochs=3,
         lr=0.001,
         device='cuda'
     )

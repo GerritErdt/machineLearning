@@ -13,7 +13,11 @@ class BinaryFocalLossWithLogits(nn.Module):
     def forward(self, logits, targets):
         bce_loss = F.binary_cross_entropy_with_logits(logits, targets, reduction='none')
         pt = torch.exp(-bce_loss)
-        focal_loss = self.alpha * (1 - pt) ** self.gamma * bce_loss
+
+        # Korrekte asymmetrische alpha-Gewichtung (alpha_t)
+        alpha_t = targets * self.alpha + (1 - targets) * (1 - self.alpha)
+
+        focal_loss = alpha_t * (1 - pt) ** self.gamma * bce_loss
 
         if self.reduction == 'mean':
             return focal_loss.mean()

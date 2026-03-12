@@ -4,7 +4,7 @@ import torchmetrics.classification as tm
 import torch_geometric.nn as gnn
 import torch.amp as amp
 import optuna
-import src.models.focal_loss as loss
+import src.models.focal_loss as fl
 
 class GNNModel(nn.Module):
     def __init__(self, input_net_dropout, num_edge_convs, gnn_step_dropout, classifier_dropout, in_channels=2, internal_dimensions=64):
@@ -271,8 +271,7 @@ def learn(model, train_loader, val_loader, test_loader, epochs, lr_max, l2_reg, 
     # weight_tensor = torch.tensor([pos_weight], dtype=torch.float32).to(device)
     
     # criterion = nn.BCEWithLogitsLoss(pos_weight=weight_tensor)
-    print(f"alpha={pos_weight / (pos_weight + 1):.4f}, gamma=2.0 for BinaryFocalLossWithLogits")
-    criterion = loss.BinaryFocalLossWithLogits(alpha=pos_weight / (pos_weight + 1), gamma=2.0)
+    criterion = fl.BinaryFocalLossWithLogits(alpha=pos_weight / (pos_weight + 1), gamma=2.0)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr_max, weight_decay=l2_reg)
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
         optimizer, 
@@ -345,16 +344,35 @@ def learn(model, train_loader, val_loader, test_loader, epochs, lr_max, l2_reg, 
     return model, history
 
 def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight):
+    alpha_center = pos_weight / (pos_weight + 1) # we can estimate alpha, but not be completely sure of the exact value. We use this as a baseline estimation. 
+    
+    # original parameters, restore later
+    # config = {
+    #     # model parameters
+    #     "input_net_dropout": trial.suggest_float("input_net_dropout", 0.1, 0.2, step=0.05), 
+    #     "num_edge_convs": trial.suggest_int("num_edge_convs", 4, 8, step=1),
+    #     "gnn_step_dropout": trial.suggest_float("gnn_step_dropout", 0.1, 0.25, step=0.05),
+    #     "classifier_dropout": trial.suggest_float("classifier_dropout", 0.1, 0.25, step=0.05),
+        
+    #     # training parameters
+    #     "lr_max": trial.suggest_float("lr_max", 5e-4, 5e-2, log=True),
+    #     "l2_reg": trial.suggest_float("l2_reg", 1e-4, 5e-3, log=True),
+    #     "focal_loss_alpha": trial.suggest_float("focal_loss_alpha", 1/8 * alpha_center, min(0.99, 8 * alpha_center)),
+    #     "focal_loss_gamma": trial.suggest_float("focal_loss_gamma", 0.0, 5.0),
+    # }
+    
     config = {
         # model parameters
-        "input_net_dropout": trial.suggest_float("input_net_dropout", 0.1, 0.2, step=0.05), 
-        "num_edge_convs": trial.suggest_int("num_edge_convs", 4, 8, step=1),
-        "gnn_step_dropout": trial.suggest_float("gnn_step_dropout", 0.1, 0.25, step=0.05),
-        "classifier_dropout": trial.suggest_float("classifier_dropout", 0.1, 0.25, step=0.05),
-        
+        "input_net_dropout": trial.suggest_categorical("input_net_dropout", [0.1]),
+        "num_edge_convs": trial.suggest_categorical("num_edge_convs", [8]),
+        "gnn_step_dropout": trial.suggest_categorical("gnn_step_dropout", [0.1]),
+        "classifier_dropout": trial.suggest_categorical("classifier_dropout", [0.1]),
+
         # training parameters
         "lr_max": trial.suggest_float("lr_max", 5e-4, 5e-2, log=True),
-        "l2_reg": trial.suggest_float("l2_reg", 1e-4, 5e-3, log=True)
+        "l2_reg": trial.suggest_categorical("l2_reg", [0.0005716387943814013]),
+        "focal_loss_alpha": trial.suggest_float("focal_loss_alpha", 1/8 * alpha_center, min(0.99, 8 * alpha_center)),
+        "focal_loss_gamma": trial.suggest_float("focal_loss_gamma", 0.0, 5.0),
     }
     
     model = GNNModel(
