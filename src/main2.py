@@ -1,10 +1,9 @@
 import optuna
-import src.models.model as model_def
-import src.models.baseline_model as baseline_model_def
+import src.models.model_dif_hp as model_def
 import src.data_loading.data_loading_new as dl
 import src.helper_functions.helper_functions as hf
 
-def main(trials=100, trial_epochs=25, fraction_for_hpo=0.35, final_data_size=None):
+def main(trials=60, trial_epochs=12, fraction_for_hpo=0.35, final_data_size=int(1e5)):
     hf.set_all_seeds()
     
     # data loading
@@ -61,65 +60,23 @@ def main(trials=100, trial_epochs=25, fraction_for_hpo=0.35, final_data_size=Non
     print("\nStarting final training with best hyperparameters...")
     trained_model, history = model_def.learn(
         model=model_def.GNNModel(
-            input_net_dropout=trial.params["input_net_dropout"],
-            num_edge_convs=trial.params["num_edge_convs"],
-            gnn_step_dropout=trial.params["gnn_step_dropout"],
-            classifier_dropout=trial.params["classifier_dropout"],
+            input_net_dropout=0.1,
+            num_edge_convs=8,
+            gnn_step_dropout=0.1,
+            classifier_dropout=0.1,
+            activation_function=trial.params["activation_function"],
+            aggr_combination=trial.params["aggr_combination"]
         ), 
         train_loader=train_loader,
         val_loader=val_loader,
         test_loader=test_loader, 
         epochs=final_epochs,
         lr_max=trial.params["lr_max"],
-        l2_reg=trial.params["l2_reg"], 
+        l2_reg=0.00011058565255134606,
         pos_weight=pos_weight,
     )
     
-    hf.show_history(history)
-
-def just_train():
-    hf.set_all_seeds()
-    train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(None, batch_size=128, train_split=0.7)
-    
-    ml_model = model_def.GNNModel(
-        input_net_dropout=0.1,
-        num_edge_convs=8,
-        gnn_step_dropout=0.1,
-        classifier_dropout=0.1,
-    )
-    
-    trained_model, history = model_def.learn(
-        model=ml_model, 
-        train_loader=train_loader,
-        val_loader=val_loader,
-        test_loader=test_loader, 
-        epochs=3,
-        lr_max=0.0045147568655840575,
-        l2_reg=0.0005716387943814013,
-        pos_weight=pos_weight,
-    )
-    
-    hf.show_history(history)
-
-def just_train_baseline():
-    hf.set_all_seeds()
-    train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(None, batch_size=128, train_split=0.7)
-
-    ml_model = baseline_model_def.BaselineGNN()
-
-    history = baseline_model_def.train_and_evaluate(
-        model=ml_model, 
-        train_loader=train_loader,
-        val_loader=val_loader,
-        test_loader=test_loader, 
-        epochs=10,
-        lr=0.001,
-        device='cuda'
-    )
-
     hf.show_history(history)
         
 if __name__ == "__main__":
-    # main()
-    just_train()
-    # just_train_baseline()
+    main()
