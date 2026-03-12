@@ -1,0 +1,3 @@
+- code kommentieren und alte löschen
+- ggf predictions auf test machen 
+- todos in dem notebook abarbeiten
