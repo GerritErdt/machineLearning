@@ -4,7 +4,8 @@ import src.models.baseline_model as baseline_model_def
 import src.data_loading.data_loading as dl
 import src.helper_functions.helper_functions as hf
 
-def main(trials=75, trial_epochs=10, fraction_for_hpo=0.35, final_data_size=None):
+# performs HPO and a final training
+def main(trials=100, trial_epochs=25, fraction_for_hpo=0.35, final_data_size=None):
     hf.set_all_seeds()
     
     # data loading
@@ -13,6 +14,7 @@ def main(trials=75, trial_epochs=10, fraction_for_hpo=0.35, final_data_size=None
     final_epochs = max(1, int(2 * trial_epochs * len(hpo_train_loader) / len(train_loader)))  # empirically found, provides a good scale-up
     print(f"Using {final_epochs} epochs for final training based on {trial_epochs} trial epochs and dataset size ratio.")
     
+    # initialize Optuna study with TPE sampler and Hyperband pruner
     sampler = optuna.samplers.TPESampler(seed=42, multivariate=True)
     
     pruner = optuna.pruners.HyperbandPruner(
@@ -23,6 +25,7 @@ def main(trials=75, trial_epochs=10, fraction_for_hpo=0.35, final_data_size=None
     
     study = optuna.create_study(direction="minimize", sampler=sampler, pruner=pruner)
 
+    # run HPO trials
     study.optimize(
         lambda trial: model_def.objective(
             trial=trial, 
@@ -58,6 +61,7 @@ def main(trials=75, trial_epochs=10, fraction_for_hpo=0.35, final_data_size=None
 
     trial = study.best_trial
     
+    # train the final model with the best hyperparameters on the full training set and evaluate on the test setß
     print("\nStarting final training with best hyperparameters...")
     trained_model, history = model_def.learn(
         model=model_def.GNNModel(
@@ -78,9 +82,12 @@ def main(trials=75, trial_epochs=10, fraction_for_hpo=0.35, final_data_size=None
     
     hf.show_history(history)
 
-def just_train():
+    hf.show_predictions(trained_model, test_loader)
+
+# trains the current model with some fixed hyperparameters, without HPO, for a quick test run
+def just_train(data_size=None, epochs=25):
     hf.set_all_seeds()
-    train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(None, batch_size=128, train_split=0.7)
+    train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(int(data_size) if data_size else None, batch_size=128, train_split=0.7)
     
     ml_model = model_def.GNNModel(
         input_net_dropout=0.1,
@@ -94,7 +101,7 @@ def just_train():
         train_loader=train_loader,
         val_loader=val_loader,
         test_loader=test_loader, 
-        epochs=5,
+        epochs=epochs,
         lr_max=0.0045147568655840575,
         l2_reg=0.0005716387943814013,
         focal_loss_alpha=0.86,
@@ -105,9 +112,10 @@ def just_train():
     
     hf.show_predictions(trained_model, test_loader)
 
-def just_train_baseline():
+# trains the baseline model, without HPO, for a quick test run
+def just_train_baseline(data_size=None, epochs=25):
     hf.set_all_seeds()
-    train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(int(1e4), batch_size=128, train_split=0.7)
+    train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(int(data_size) if data_size else None, batch_size=128, train_split=0.7)
 
     ml_model = baseline_model_def.BaselineGNN()
 
@@ -116,7 +124,7 @@ def just_train_baseline():
         train_loader=train_loader,
         val_loader=val_loader,
         test_loader=test_loader, 
-        epochs=3,
+        epochs=epochs,
         lr=0.001,
         device='cuda'
     )
@@ -124,6 +132,6 @@ def just_train_baseline():
     hf.show_history(history)
         
 if __name__ == "__main__":
-    # main()
-    just_train()
+    main()
+    # just_train()
     # just_train_baseline()
