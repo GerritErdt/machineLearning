@@ -1,1 +1,2 @@
-- todos in dem notebook abarbeiten
+- baseline model 10 epochs fix 
+- baseline model auroc 0.61 fix

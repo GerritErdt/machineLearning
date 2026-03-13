@@ -1,8 +1,10 @@
 import optuna
+import torch
 import src.models.model as model_def
 import src.models.baseline_model as baseline_model_def
 import src.data_loading.data_loading as dl
 import src.helper_functions.helper_functions as hf
+import gc
 
 # performs HPO and a final training
 def main(trials=100, trial_epochs=25, fraction_for_hpo=0.35, final_data_size=None):
@@ -83,6 +85,12 @@ def main(trials=100, trial_epochs=25, fraction_for_hpo=0.35, final_data_size=Non
     hf.show_history(history)
 
     hf.show_predictions(trained_model, test_loader)
+    
+    # free memory
+    del hpo_train_loader, hpo_val_loader, train_loader, val_loader, test_loader
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 # trains the current model with some fixed hyperparameters, without HPO, for a quick test run
 def just_train(data_size=None, epochs=25):
@@ -111,9 +119,14 @@ def just_train(data_size=None, epochs=25):
     hf.show_history(history)
     
     hf.show_predictions(trained_model, test_loader)
+    
+    del train_loader, val_loader, test_loader
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 # trains the baseline model, without HPO, for a quick test run
-def just_train_baseline(data_size=None, epochs=25):
+def just_train_baseline(data_size=None, epochs=10):
     hf.set_all_seeds()
     train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(int(data_size) if data_size else None, batch_size=128, train_split=0.7)
 
@@ -130,6 +143,11 @@ def just_train_baseline(data_size=None, epochs=25):
     )
 
     hf.show_history(history)
+    
+    del train_loader, val_loader, test_loader
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
         
 if __name__ == "__main__":
     main()
