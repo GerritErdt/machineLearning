@@ -1,10 +1,10 @@
+from torch_geometric.data import Batch
 import matplotlib.pyplot as plt
 import matplotlib.collections as mcoll
 import numpy as np
 import src.data_loading.data_loading as dl
 import torch
 import random
-
 
 def show_fused_magic_graph(data, label_name="Event"):
     # Topologie und Geometrie direkt aus dem dynamischen data-Objekt beziehen
@@ -109,7 +109,6 @@ def show_histograms_for_telescopes(num_samples=50000):
     plt.tight_layout()
     plt.show()
 
-
 def show_history(history, feature_names=None):
     # Definition der aktuellen Metriken
     metrics = [
@@ -165,6 +164,94 @@ def show_history(history, feature_names=None):
 
     plt.tight_layout()
     plt.show()
+
+def show_predictions(model, test_loader, num_samples=10):
+    device = next(model.parameters()).device
+    model.eval()
+    dataset = test_loader.dataset
+
+    num_to_show = min(num_samples, len(dataset))
+    named_predictions = []
+
+    # Hilfsfunktion für Subplots (aus deinem Snippet)
+    def draw_single_graph(ax, positions, edges, signal, title, v_min, v_max, cmap='viridis'):
+        if edges.size > 0:
+            lines = [[positions[u], positions[v]] for u, v in edges.T]
+            lc = mcoll.LineCollection(lines, colors='gray', linewidths=0.5, alpha=0.5, zorder=1)
+            ax.add_collection(lc)
+
+        scatter = ax.scatter(positions[:, 0], positions[:, 1], c=signal, cmap=cmap,
+                             s=40, zorder=2, vmin=v_min, vmax=v_max)
+        ax.set_aspect('equal')
+        ax.set_title(title)
+        ax.axis('off')
+        return scatter
+
+    with torch.no_grad():
+        for idx in range(num_to_show):
+            # 1. Daten direkt aus dem Dataset holen
+            data = dataset[idx]
+
+            # 2. Inferenz für diesen einzelnen Graphen durchführen
+            # Batch.from_data_list simuliert einen DataLoader mit Batch-Size 1
+            batch = Batch.from_data_list([data]).to(device)
+            prob = model.predict(batch.x, batch.edge_index, batch.batch, batch.num_graphs).item()
+
+            # 3. Vorhersagen binarisieren und Labels auslesen
+            pred_class = int(prob > 0.5)
+            true_class = int(data.y.item())
+
+            pred_name = dataset.get_label_name(pred_class)
+            label_name = dataset.get_label_name(true_class)
+
+            named_predictions.append((prob, pred_name, label_name))
+
+            # 4. Daten für Matplotlib vorbereiten (sicherstellen, dass sie auf CPU & NumPy sind)
+            pos_np = data.pos.cpu().numpy()
+            edge_index_np = data.edge_index.cpu().numpy()
+
+            signal_m1 = data.x[:, 0].cpu().numpy()
+            signal_m2 = data.x[:, 1].cpu().numpy()
+            signal_diff = signal_m1 - signal_m2
+
+            vmin = min(signal_m1.min(), signal_m2.min())
+            vmax = max(signal_m1.max(), signal_m2.max())
+
+            # 5. Figure erstellen
+            fig, axes = plt.subplots(1, 3, figsize=(24, 8))
+
+            # Farblicher Indikator: Grün wenn korrekt, Rot wenn falsch
+            title_color = "green" if pred_class == true_class else "red"
+
+            fig.suptitle(
+                f"Sample {idx+1} | Wahrscheinlichkeit: {prob:.4f} | "
+                f"Vorhersage: {pred_name} | Wahres Label: {label_name}",
+                fontsize=18, fontweight='bold', color=title_color
+            )
+
+            # M1 und M2 plotten
+            scatter_m1 = draw_single_graph(axes[0], pos_np, edge_index_np, signal_m1,
+                                           "Kanal 0 (M1)", vmin, vmax)
+            draw_single_graph(axes[1], pos_np, edge_index_np, signal_m2,
+                              "Kanal 1 (M2)", vmin, vmax)
+
+            # Differenz-Plot
+            vmax_diff = np.max(np.abs(signal_diff))
+            vmax_diff = vmax_diff if vmax_diff > 0 else 1.0
+            scatter_diff = draw_single_graph(axes[2], pos_np, edge_index_np, signal_diff,
+                                             "Differenz (M1 - M2)", -vmax_diff, vmax_diff, cmap='coolwarm')
+
+            # Colorbars zuweisen
+            fig.colorbar(scatter_m1, ax=axes[:2], orientation='vertical', fraction=0.02, pad=0.04,
+                         label='Signalintensität')
+            fig.colorbar(scatter_diff, ax=axes[2], orientation='vertical', fraction=0.04, pad=0.04,
+                         label='Signal-Differenz')
+
+            # Optional: Abstände optimieren
+            plt.tight_layout(rect=[0, 0, 1, 0.95])  # Lässt Platz für den suptitle
+            plt.show()
+
+    return named_predictions
     
 def set_all_seeds(seed=42):
     # 1. Standard Python Random Seed

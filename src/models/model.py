@@ -264,14 +264,14 @@ def train_one_epoch(model, data_loader, device, history, metrics, optimizer, sca
         history[f"train_{key}"].append(metric.compute().item())
         metric.reset()
 
-def learn(model, train_loader, val_loader, test_loader, epochs, lr_max, l2_reg, pos_weight, early_stopping_patience=5, trial=None):
+def learn(model, train_loader, val_loader, test_loader, epochs, lr_max, l2_reg, focal_loss_alpha, focal_loss_gamma, early_stopping_patience=5, trial=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # auto-detect GPU-availability
     model = model.to(device) 
     scaler = amp.GradScaler(enabled=(device.type == 'cuda'))  # automatic mixed precision for faster training on GPU
     # weight_tensor = torch.tensor([pos_weight], dtype=torch.float32).to(device)
     
     # criterion = nn.BCEWithLogitsLoss(pos_weight=weight_tensor)
-    criterion = fl.BinaryFocalLossWithLogits(alpha=pos_weight / (pos_weight + 1), gamma=2.0)
+    criterion = fl.BinaryFocalLossWithLogits(alpha=focal_loss_alpha, gamma=focal_loss_gamma)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr_max, weight_decay=l2_reg)
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
         optimizer, 
@@ -344,35 +344,19 @@ def learn(model, train_loader, val_loader, test_loader, epochs, lr_max, l2_reg, 
     return model, history
 
 def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight):
-    alpha_center = pos_weight / (pos_weight + 1) # we can estimate alpha, but not be completely sure of the exact value. We use this as a baseline estimation. 
-    
-    # original parameters, restore later
-    # config = {
-    #     # model parameters
-    #     "input_net_dropout": trial.suggest_float("input_net_dropout", 0.1, 0.2, step=0.05), 
-    #     "num_edge_convs": trial.suggest_int("num_edge_convs", 4, 8, step=1),
-    #     "gnn_step_dropout": trial.suggest_float("gnn_step_dropout", 0.1, 0.25, step=0.05),
-    #     "classifier_dropout": trial.suggest_float("classifier_dropout", 0.1, 0.25, step=0.05),
-        
-    #     # training parameters
-    #     "lr_max": trial.suggest_float("lr_max", 5e-4, 5e-2, log=True),
-    #     "l2_reg": trial.suggest_float("l2_reg", 1e-4, 5e-3, log=True),
-    #     "focal_loss_alpha": trial.suggest_float("focal_loss_alpha", 1/8 * alpha_center, min(0.99, 8 * alpha_center)),
-    #     "focal_loss_gamma": trial.suggest_float("focal_loss_gamma", 0.0, 5.0),
-    # }
     
     config = {
         # model parameters
-        "input_net_dropout": trial.suggest_categorical("input_net_dropout", [0.1]),
-        "num_edge_convs": trial.suggest_categorical("num_edge_convs", [8]),
-        "gnn_step_dropout": trial.suggest_categorical("gnn_step_dropout", [0.1]),
-        "classifier_dropout": trial.suggest_categorical("classifier_dropout", [0.1]),
-
+        "input_net_dropout": trial.suggest_float("input_net_dropout", 0.1, 0.2, step=0.05), 
+        "num_edge_convs": trial.suggest_int("num_edge_convs", 6, 8, step=1),
+        "gnn_step_dropout": trial.suggest_float("gnn_step_dropout", 0.1, 0.25, step=0.05),
+        "classifier_dropout": trial.suggest_float("classifier_dropout", 0.1, 0.25, step=0.05),
+        
         # training parameters
         "lr_max": trial.suggest_float("lr_max", 5e-4, 5e-2, log=True),
-        "l2_reg": trial.suggest_categorical("l2_reg", [0.0005716387943814013]),
-        "focal_loss_alpha": trial.suggest_float("focal_loss_alpha", 1/8 * alpha_center, min(0.99, 8 * alpha_center)),
-        "focal_loss_gamma": trial.suggest_float("focal_loss_gamma", 0.0, 5.0),
+        "l2_reg": trial.suggest_float("l2_reg", 1e-4, 5e-3, log=True),
+        "focal_loss_alpha": trial.suggest_float("focal_loss_alpha", 0.774, 0.946), # pos_weight would lead to alpha=0.86. A +/- 10% range around this value seems reasonable to explore
+        "focal_loss_gamma": trial.suggest_float("focal_loss_gamma", 3.0, 5.0),
     }
     
     model = GNNModel(
@@ -390,7 +374,8 @@ def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight):
         epochs=epochs,
         lr_max=config["lr_max"],
         l2_reg=config["l2_reg"],
-        pos_weight=pos_weight,
+        focal_loss_alpha=config["focal_loss_alpha"],
+        focal_loss_gamma=config["focal_loss_gamma"],
         trial=trial
     )
     

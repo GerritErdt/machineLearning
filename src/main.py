@@ -1,7 +1,7 @@
 import optuna
 import src.models.model as model_def
 import src.models.baseline_model as baseline_model_def
-import src.data_loading.data_loading_new as dl
+import src.data_loading.data_loading as dl
 import src.helper_functions.helper_functions as hf
 
 def main(trials=75, trial_epochs=10, fraction_for_hpo=0.35, final_data_size=None):
@@ -72,7 +72,8 @@ def main(trials=75, trial_epochs=10, fraction_for_hpo=0.35, final_data_size=None
         epochs=final_epochs,
         lr_max=trial.params["lr_max"],
         l2_reg=trial.params["l2_reg"], 
-        pos_weight=pos_weight,
+        focal_loss_alpha=trial.params["focal_loss_alpha"],
+        focal_loss_gamma=trial.params["focal_loss_gamma"],
     )
     
     hf.show_history(history)
@@ -93,13 +94,16 @@ def just_train():
         train_loader=train_loader,
         val_loader=val_loader,
         test_loader=test_loader, 
-        epochs=3,
+        epochs=5,
         lr_max=0.0045147568655840575,
         l2_reg=0.0005716387943814013,
-        pos_weight=pos_weight,
+        focal_loss_alpha=0.86,
+        focal_loss_gamma=3.0
     )
     
     hf.show_history(history)
+    
+    hf.show_predictions(trained_model, test_loader)
 
 def just_train_baseline():
     hf.set_all_seeds()
