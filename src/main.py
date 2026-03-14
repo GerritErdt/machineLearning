@@ -7,7 +7,7 @@ import src.helper_functions.helper_functions as hf
 import gc
 
 # performs HPO and a final training
-def main(trials=100, trial_epochs=25, fraction_for_hpo=0.35, final_data_size=None):
+def main(trials=70, trial_epochs=31, fraction_for_hpo=0.35, final_data_size=None):
     hf.set_all_seeds()
     
     # data loading
@@ -78,8 +78,7 @@ def main(trials=100, trial_epochs=25, fraction_for_hpo=0.35, final_data_size=Non
         epochs=final_epochs,
         lr_max=trial.params["lr_max"],
         l2_reg=trial.params["l2_reg"], 
-        focal_loss_alpha=trial.params["focal_loss_alpha"],
-        focal_loss_gamma=trial.params["focal_loss_gamma"],
+        pos_weight=pos_weight
     )
     
     hf.show_history(history)
@@ -112,8 +111,7 @@ def just_train(data_size=None, epochs=25):
         epochs=epochs,
         lr_max=0.0045147568655840575,
         l2_reg=0.0005716387943814013,
-        focal_loss_alpha=0.86,
-        focal_loss_gamma=3.0
+        pos_weight=pos_weight
     )
     
     hf.show_history(history)
@@ -126,7 +124,7 @@ def just_train(data_size=None, epochs=25):
         torch.cuda.empty_cache()
 
 # trains the baseline model, without HPO, for a quick test run
-def just_train_baseline(data_size=None, epochs=10):
+def just_train_baseline(data_size=None, epochs=50):
     hf.set_all_seeds()
     train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(int(data_size) if data_size else None, batch_size=128, train_split=0.7)
 
@@ -150,6 +148,6 @@ def just_train_baseline(data_size=None, epochs=10):
         torch.cuda.empty_cache()
         
 if __name__ == "__main__":
-    main()
+    # main()
     # just_train()
     # just_train_baseline()

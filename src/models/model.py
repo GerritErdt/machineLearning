@@ -4,7 +4,6 @@ import torchmetrics.classification as tm
 import torch_geometric.nn as gnn
 import torch.amp as amp
 import optuna
-import src.models.focal_loss as fl
 
 class GNNModel(nn.Module):
     def __init__(self, input_net_dropout, num_edge_convs, gnn_step_dropout, classifier_dropout, in_channels=2, internal_dimensions=64):
@@ -264,14 +263,14 @@ def train_one_epoch(model, data_loader, device, history, metrics, optimizer, sca
         history[f"train_{key}"].append(metric.compute().item())
         metric.reset()
 
-def learn(model, train_loader, val_loader, test_loader, epochs, lr_max, l2_reg, focal_loss_alpha, focal_loss_gamma, early_stopping_patience=5, trial=None):
+def learn(model, train_loader, val_loader, test_loader, epochs, lr_max, l2_reg, pos_weight, early_stopping_patience=5, trial=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # auto-detect GPU-availability
     model = model.to(device) 
     scaler = amp.GradScaler(enabled=(device.type == 'cuda'))  # automatic mixed precision for faster training on GPU
-    # weight_tensor = torch.tensor([pos_weight], dtype=torch.float32).to(device)
+    weight_tensor = torch.tensor([pos_weight], dtype=torch.float32).to(device)
     
-    # criterion = nn.BCEWithLogitsLoss(pos_weight=weight_tensor)
-    criterion = fl.BinaryFocalLossWithLogits(alpha=focal_loss_alpha, gamma=focal_loss_gamma)
+    criterion = nn.BCEWithLogitsLoss(pos_weight=weight_tensor)
+    # criterion = fl.BinaryFocalLossWithLogits(alpha=focal_loss_alpha, gamma=focal_loss_gamma)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr_max, weight_decay=l2_reg)
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
         optimizer, 
@@ -355,8 +354,6 @@ def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight):
         # training parameters
         "lr_max": trial.suggest_float("lr_max", 5e-4, 5e-2, log=True),
         "l2_reg": trial.suggest_float("l2_reg", 1e-4, 5e-3, log=True),
-        "focal_loss_alpha": trial.suggest_float("focal_loss_alpha", 0.774, 0.946), # pos_weight would lead to alpha=0.86. A +/- 10% range around this value seems reasonable to explore
-        "focal_loss_gamma": trial.suggest_float("focal_loss_gamma", 3.0, 5.0),
     }
     
     model = GNNModel(
@@ -374,8 +371,7 @@ def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight):
         epochs=epochs,
         lr_max=config["lr_max"],
         l2_reg=config["l2_reg"],
-        focal_loss_alpha=config["focal_loss_alpha"],
-        focal_loss_gamma=config["focal_loss_gamma"],
+        pos_weight=pos_weight,
         trial=trial
     )
     
