@@ -148,6 +148,6 @@ def just_train_baseline(data_size=None, epochs=50):
         torch.cuda.empty_cache()
         
 if __name__ == "__main__":
-    # main()
-    # just_train()
-    # just_train_baseline()
+    main()
+    just_train()
+    just_train_baseline()

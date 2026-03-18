@@ -45,7 +45,7 @@ class GNNModel(nn.Module):
                 nn.GELU(),
             )
             
-            self.convs.append(gnn.EdgeConv(conv_mlp, aggr=multi_aggr))
+            self.convs.append(gnn.EdgeConv(conv_mlp, aggr=multi_aggr)) # EdgeConv is a special kind of GNN-layer, that is location-invariant and thus better suited for such sparse graphs where to form is relevant
             
             self.projs.append(nn.Sequential( # only perform linear projection to reduce dimensionality (combine max/mean features)
                 nn.Linear(2 * internal_dimensions, internal_dimensions),
