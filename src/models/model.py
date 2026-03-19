@@ -270,7 +270,6 @@ def learn(model, train_loader, val_loader, test_loader, epochs, lr_max, l2_reg, 
     weight_tensor = torch.tensor([pos_weight], dtype=torch.float32).to(device)
     
     criterion = nn.BCEWithLogitsLoss(pos_weight=weight_tensor)
-    # criterion = fl.BinaryFocalLossWithLogits(alpha=focal_loss_alpha, gamma=focal_loss_gamma)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr_max, weight_decay=l2_reg)
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
         optimizer, 
