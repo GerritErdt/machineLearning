@@ -26,6 +26,8 @@ class GNNModel(nn.Module):
                 # no dropout, as there is no additional layer to restore information here
         )
         
+        self.input_net_jumping_dropout = nn.Dropout(0.25)
+        
         # global feature transformation
         # self.global_net = nn.Sequential(
         #     nn.BatchNorm1d(num_global_features),
@@ -38,8 +40,15 @@ class GNNModel(nn.Module):
         #     nn.LayerNorm(internal_dimensions),
         #     nn.GELU()
         # )
+        # self.global_net = nn.Sequential(
+        #     nn.BatchNorm1d(num_global_features),
+        #     nn.Dropout(0.75),
+        # )
         self.global_net = nn.Sequential(
             nn.BatchNorm1d(num_global_features),
+            nn.Linear(num_global_features, internal_dimensions // 4),
+            nn.LayerNorm(internal_dimensions // 4),
+            nn.GELU(),
             nn.Dropout(0.5),
         )
         
@@ -74,7 +83,7 @@ class GNNModel(nn.Module):
             
         # classifier-Schicht
         self.classifier = nn.Sequential(
-            nn.Linear(4 * internal_dimensions + internal_dimensions, internal_dimensions),
+            nn.Linear(4 * internal_dimensions + internal_dimensions // 4, internal_dimensions),
             nn.LayerNorm(internal_dimensions),
             nn.GELU(),
             nn.Dropout(classifier_dropout),
@@ -133,6 +142,8 @@ class GNNModel(nn.Module):
         # jumping knowledge of initial features against over-smoothing
         x_input_max = gnn.global_max_pool(x, batch, size=num_graphs)
         x_input_mean = gnn.global_mean_pool(x, batch, size=num_graphs)
+        # x_input_max = self.input_net_jumping_dropout(gnn.global_max_pool(x, batch, size=num_graphs))
+        # x_input_mean = self.input_net_jumping_dropout(gnn.global_mean_pool(x, batch, size=num_graphs))
         
         # GNN-layers with residual connections
         for conv, proj, norm in zip(self.convs, self.projs, self.norms):
