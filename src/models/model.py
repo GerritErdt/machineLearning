@@ -26,6 +26,8 @@ class GNNModel(nn.Module):
                 # no dropout, as there is no additional layer to restore information here
         )
         
+        self.input_net_jk_dropout = nn.Dropout(0.25)
+        
         # GNN-layers
         self.convs = nn.ModuleList() # GraphConv-layers
         self.projs = nn.ModuleList() # re-projection layers
@@ -111,8 +113,8 @@ class GNNModel(nn.Module):
         x = self.input_net(x)
         
         # jumping knowledge of initial features against over-smoothing
-        x_input_max = gnn.global_max_pool(x, batch, size=num_graphs)
-        x_input_mean = gnn.global_mean_pool(x, batch, size=num_graphs)
+        x_input_max = self.input_net_jk_dropout(gnn.global_max_pool(x, batch, size=num_graphs))
+        x_input_mean = self.input_net_jk_dropout(gnn.global_mean_pool(x, batch, size=num_graphs))
         
         # GNN-layers with residual connections
         for conv, proj, norm in zip(self.convs, self.projs, self.norms):
