@@ -92,7 +92,7 @@ def main(trials=70, trial_epochs=31, fraction_for_hpo=0.35, final_data_size=None
         torch.cuda.empty_cache()
 
 # trains the current model with some fixed hyperparameters, without HPO, for a quick test run
-def just_train(data_size=None, epochs=15):
+def just_train(data_size=1e5, epochs=5):
     hf.set_all_seeds()
     train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(int(data_size) if data_size else None, batch_size=128, train_split=0.7)
     
@@ -101,6 +101,7 @@ def just_train(data_size=None, epochs=15):
         num_edge_convs=8,
         gnn_step_dropout=0.1,
         classifier_dropout=0.1,
+        internal_dimensions=32 # todo: remove
     )
     
     trained_model, history = model_def.learn(

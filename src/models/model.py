@@ -6,7 +6,7 @@ import torch.amp as amp
 import optuna
 
 class GNNModel(nn.Module):
-    def __init__(self, input_net_dropout, num_edge_convs, gnn_step_dropout, classifier_dropout, in_channels=5, internal_dimensions=64):
+    def __init__(self, input_net_dropout, num_edge_convs, gnn_step_dropout, classifier_dropout, in_channels=5, internal_dimensions=64, num_global_features=9):
         super().__init__()
         
         self.hidden_channels = internal_dimensions
@@ -24,6 +24,22 @@ class GNNModel(nn.Module):
                 nn.LayerNorm(internal_dimensions),
                 # no activation, to not 'squeeze' the feature space too much
                 # no dropout, as there is no additional layer to restore information here
+        )
+        
+        # global feature transformation
+        # self.global_net = nn.Sequential(
+        #     nn.BatchNorm1d(num_global_features),
+        #     nn.Linear(num_global_features, internal_dimensions),
+        #     nn.LayerNorm(internal_dimensions),
+        #     nn.GELU(),
+        #     nn.Dropout(input_net_dropout),
+            
+        #     nn.Linear(internal_dimensions, internal_dimensions),
+        #     nn.LayerNorm(internal_dimensions),
+        #     nn.GELU()
+        # )
+        self.global_net = nn.Sequential(
+            nn.BatchNorm1d(num_global_features)
         )
         
         # GNN-layers
@@ -57,7 +73,7 @@ class GNNModel(nn.Module):
             
         # classifier-Schicht
         self.classifier = nn.Sequential(
-            nn.Linear(4 * internal_dimensions, internal_dimensions),
+            nn.Linear(4 * internal_dimensions + internal_dimensions, internal_dimensions),
             nn.LayerNorm(internal_dimensions),
             nn.GELU(),
             nn.Dropout(classifier_dropout),
@@ -106,9 +122,12 @@ class GNNModel(nn.Module):
             nn.init.ones_(module.weight)
             nn.init.zeros_(module.bias)
     
-    def forward(self, x, edge_index, batch, num_graphs): 
+    def forward(self, x, edge_index, batch, num_graphs, global_params): 
         # initial input transformation
         x = self.input_net(x)
+        
+        # global feature transformation
+        global_features_transformed = self.global_net(global_params)
         
         # jumping knowledge of initial features against over-smoothing
         x_input_max = gnn.global_max_pool(x, batch, size=num_graphs)
@@ -130,16 +149,16 @@ class GNNModel(nn.Module):
         x_gnn_max = gnn.global_max_pool(x, batch, size=num_graphs)  
         x_gnn_mean = gnn.global_mean_pool(x, batch, size=num_graphs)
         
-        x_pooled = torch.cat([x_input_max, x_input_mean, x_gnn_max, x_gnn_mean], dim=1)  # concatenate all pooled features, using jumping knowledge
+        x_pooled = torch.cat([x_input_max, x_input_mean, x_gnn_max, x_gnn_mean, global_features_transformed], dim=1)  # concatenate all pooled features, using jumping knowledge
         
         # final classification
         out = self.classifier(x_pooled)
         
         return out
 
-    def predict(self, x, edge_index, batch, num_graphs):
+    def predict(self, x, edge_index, batch, num_graphs, global_features):
         with torch.no_grad():
-            logits = self.forward(x, edge_index, batch, num_graphs)
+            logits = self.forward(x, edge_index, batch, num_graphs, global_features)
             probs = torch.sigmoid(logits)
             
         return probs
@@ -175,7 +194,7 @@ def get_input_importance(model, test_loader, history, device):
                 batch_cloned.x[:, feature_idx] = batch_cloned.x[perm_indices, feature_idx]
 
                 # 4. Inferenz mit dem gestörten Feature
-                out = model(batch_cloned.x, batch_cloned.edge_index, batch_cloned.batch, batch_cloned.num_graphs)
+                out = model(batch_cloned.x, batch_cloned.edge_index, batch_cloned.batch, batch_cloned.num_graphs, batch_cloned.global_params)
                 probs = torch.sigmoid(out.view(-1))
                 targets = batch_cloned.y.view(-1).long()
 
@@ -200,7 +219,7 @@ def grade_model(model, data_loader, device, history, metrics, prefix, criterion)
     with torch.no_grad():
         for batch in data_loader:
             batch = batch.to(device)
-            out = model(batch.x, batch.edge_index, batch.batch, batch.num_graphs)
+            out = model(batch.x, batch.edge_index, batch.batch, batch.num_graphs, batch.global_params)
             
             batch_logits = out.view(-1)
             batch_targets = batch.y.view(-1).float()
@@ -230,7 +249,7 @@ def train_one_epoch(model, data_loader, device, history, metrics, optimizer, sca
         optimizer.zero_grad(set_to_none=True)
         
         with torch.autocast(device_type=device.type, enabled=(device.type == 'cuda'), dtype=torch.float16):  # automatic mixed precision for faster training on GPU                           
-            out = model(batch.x, batch.edge_index, batch.batch, batch.num_graphs)
+            out = model(batch.x, batch.edge_index, batch.batch, batch.num_graphs, batch.global_params)
             logits = out.view(-1)
             targets = batch.y.view(-1).float()
             

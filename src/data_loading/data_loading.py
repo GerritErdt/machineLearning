@@ -61,9 +61,12 @@ class MagicStereoDataset(data.Dataset):
             
             x_combined = torch.cat([intensities_sparse, pos_features_sparse], dim=-1)
             xy_sparse = global_pos[mask]
+            
+            global_params = self.get_global_features(edge_index, xy_sparse, intensities_sparse)
 
             self.graphs.append(tg_data.Data(
                 x=x_combined,
+                global_params=global_params,
                 edge_index=edge_index,
                 pos=xy_sparse,
                 y=labels[idx]
@@ -99,7 +102,7 @@ class MagicStereoDataset(data.Dataset):
             sum_m1, std_dev_m1,
             sum_m2, std_dev_m2,
             variance_x, variance_y
-        ]])
+        ]], dtype=torch.float32)
         
 
 # basically a copy from Jarred
