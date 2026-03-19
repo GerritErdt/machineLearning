@@ -39,7 +39,8 @@ class GNNModel(nn.Module):
         #     nn.GELU()
         # )
         self.global_net = nn.Sequential(
-            nn.BatchNorm1d(num_global_features)
+            nn.BatchNorm1d(num_global_features),
+            nn.Dropout(0.5),
         )
         
         # GNN-layers
