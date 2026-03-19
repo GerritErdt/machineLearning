@@ -29,7 +29,7 @@ class MagicStereoDataset(data.Dataset):
         background_intensity = 0.0
 
         # get neighborhood topology and node positions for the camera pixels (same for all samples)
-        global_edge_index, global_pos = compute_camera_topology(num_valid_pixels=num_pixels)
+        global_edge_index, global_pos, pos_features = compute_camera_topology_fancy(num_valid_pixels=num_pixels)
 
         # stack M1 and M2 features together and normalize
         all_features = torch.stack([transformed_m1, transformed_m2], dim=-1)  
@@ -55,14 +55,17 @@ class MagicStereoDataset(data.Dataset):
 
             # get the subgraph and add it
             edge_index, _ = tg_utils.subgraph(active_nodes, global_edge_index, relabel_nodes=True)
-
-            x_sparse = all_features[idx][mask]
-            pos_sparse = global_pos[mask]
+            
+            intensities_sparse = all_features[idx][mask]
+            pos_features_sparse = pos_features[mask]
+            
+            x_combined = torch.cat([intensities_sparse, pos_features_sparse], dim=-1)
+            xy_sparse = global_pos[mask]
 
             self.graphs.append(tg_data.Data(
-                x=x_sparse,
+                x=x_combined,
                 edge_index=edge_index,
-                pos=pos_sparse,
+                pos=xy_sparse,
                 y=labels[idx]
             ))
 
@@ -75,6 +78,29 @@ class MagicStereoDataset(data.Dataset):
     def get_label_name(self, label):
         val = label.item() if isinstance(label, torch.Tensor) else label
         return {0: "Proton", 1: "Gamma"}.get(val, "Unknown")
+    
+    def get_global_features(self, edge_index, xy_sparse, intensities_sparse):
+        num_nodes = xy_sparse.size(0)
+        num_edges = edge_index.size(1)
+        
+        density = num_edges / max(num_nodes, 1)
+        
+        sum_m1 = intensities_sparse[:, 0].sum().item()
+        std_dev_m1 = intensities_sparse[:, 0].std(unbiased=False).item()
+        
+        sum_m2 = intensities_sparse[:, 1].sum().item()
+        std_dev_m2 = intensities_sparse[:, 1].std(unbiased=False).item()
+        
+        variance_x = torch.var(xy_sparse[:, 0], unbiased=False).item()
+        variance_y = torch.var(xy_sparse[:, 1], unbiased=False).item()
+        
+        return torch.tensor([[
+            num_nodes, num_edges, density, 
+            sum_m1, std_dev_m1,
+            sum_m2, std_dev_m2,
+            variance_x, variance_y
+        ]])
+        
 
 # basically a copy from Jarred
 def compute_camera_topology(num_valid_pixels = 1039):
@@ -96,6 +122,38 @@ def compute_camera_topology(num_valid_pixels = 1039):
     pos = torch.tensor(positions, dtype=torch.float32)
 
     return edge_index, pos
+
+def compute_camera_topology_fancy(num_valid_pixels=1039):
+    camera = magic.Camera()
+    sources = []
+    targets = []
+    positions = []
+
+    for i in range(num_valid_pixels):
+        neighbors = camera.get_pixel_neighbors(i)
+        for j in neighbors:
+            if j < num_valid_pixels:
+                sources.append(i)
+                targets.append(j)
+
+        positions.append(camera.get_pixel_coordinates_xy(i))
+
+    edge_index = torch.tensor([sources, targets], dtype=torch.long)
+    pos_xy = torch.tensor(positions, dtype=torch.float32)
+    
+    x = pos_xy[:, 0]
+    y = pos_xy[:, 1]
+    
+    r = torch.hypot(x, y)
+    r_norm = r / r.max()
+    
+    phi = torch.atan2(y, x)
+    sin_phi = torch.sin(phi)
+    cos_phi = torch.cos(phi)
+    
+    pos_features = torch.stack([r_norm, sin_phi, cos_phi], dim=-1)
+
+    return edge_index, pos_xy, pos_features
 
 def load_stereo_clean_images(num_samples=None, gamma_file="./data/magic-gammas-chunked.parquet", proton_file="./data/magic-protons-chunked.parquet", num_pixels=1039):
     def extract_images(file_path):

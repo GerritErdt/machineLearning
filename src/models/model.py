@@ -6,7 +6,7 @@ import torch.amp as amp
 import optuna
 
 class GNNModel(nn.Module):
-    def __init__(self, input_net_dropout, num_edge_convs, gnn_step_dropout, classifier_dropout, in_channels=2, internal_dimensions=64):
+    def __init__(self, input_net_dropout, num_edge_convs, gnn_step_dropout, classifier_dropout, in_channels=5, internal_dimensions=64):
         super().__init__()
         
         self.hidden_channels = internal_dimensions

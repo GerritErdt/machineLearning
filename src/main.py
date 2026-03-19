@@ -92,7 +92,7 @@ def main(trials=70, trial_epochs=31, fraction_for_hpo=0.35, final_data_size=None
         torch.cuda.empty_cache()
 
 # trains the current model with some fixed hyperparameters, without HPO, for a quick test run
-def just_train(data_size=None, epochs=25):
+def just_train(data_size=None, epochs=15):
     hf.set_all_seeds()
     train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(int(data_size) if data_size else None, batch_size=128, train_split=0.7)
     
@@ -122,7 +122,7 @@ def just_train(data_size=None, epochs=25):
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
-
+    
 # trains the baseline model, without HPO, for a quick test run
 def just_train_baseline(data_size=None, epochs=50):
     hf.set_all_seeds()
@@ -148,6 +148,6 @@ def just_train_baseline(data_size=None, epochs=50):
         torch.cuda.empty_cache()
         
 if __name__ == "__main__":
-    main()
+    # main()
     just_train()
-    just_train_baseline()
+    # just_train_baseline()
