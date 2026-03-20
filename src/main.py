@@ -7,11 +7,18 @@ import src.helper_functions.helper_functions as hf
 import gc
 
 # performs HPO and a final training
-def main(trials=70, trial_epochs=31, fraction_for_hpo=0.35, final_data_size=None):
+def main(trials=3, trial_epochs=1, fraction_for_hpo=0.35, final_data_size=None, mode="stereo"):
     hf.set_all_seeds()
+    print(f"Using mode: {mode}")
     
     # data loading
-    train_loader, val_loader, test_loader, pos_weight, hpo_train_loader, hpo_val_loader = dl.get_stereo_clean_dataset(int(final_data_size) if final_data_size else None, batch_size=128, return_HPO_subset=True, fraction_for_hpo=fraction_for_hpo) 
+    train_loader, val_loader, test_loader, pos_weight, hpo_train_loader, hpo_val_loader = dl.get_stereo_clean_dataset(
+        int(final_data_size) if final_data_size else None, 
+        batch_size=128, 
+        return_HPO_subset=True, 
+        fraction_for_hpo=fraction_for_hpo,
+        mode=mode
+    ) 
     warmup_epochs = int(trial_epochs * 0.4)  # the LR scheduler takes some time to ramp up, so we give it a warmup period before pruning can kick in
     final_epochs = max(1, int(2 * trial_epochs * len(hpo_train_loader) / len(train_loader)))  # empirically found, provides a good scale-up
     print(f"Using {final_epochs} epochs for final training based on {trial_epochs} trial epochs and dataset size ratio.")
@@ -35,7 +42,8 @@ def main(trials=70, trial_epochs=31, fraction_for_hpo=0.35, final_data_size=None
             val_loader=hpo_val_loader, 
             test_loader=None, # No test loader during HPO to prevent data leakage
             epochs=trial_epochs, 
-            pos_weight=pos_weight),
+            pos_weight=pos_weight, 
+            mode=mode),
         n_trials=trials
     )
     
@@ -71,6 +79,7 @@ def main(trials=70, trial_epochs=31, fraction_for_hpo=0.35, final_data_size=None
             num_edge_convs=trial.params["num_edge_convs"],
             gnn_step_dropout=trial.params["gnn_step_dropout"],
             classifier_dropout=trial.params["classifier_dropout"],
+            in_channels=2 if mode == "stereo" else 1
         ), 
         train_loader=train_loader,
         val_loader=val_loader,
@@ -92,15 +101,23 @@ def main(trials=70, trial_epochs=31, fraction_for_hpo=0.35, final_data_size=None
         torch.cuda.empty_cache()
 
 # trains the current model with some fixed hyperparameters, without HPO, for a quick test run
-def just_train(data_size=None, epochs=25):
+def just_train(data_size=5e4, epochs=5, mode="stereo"):
     hf.set_all_seeds()
-    train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(int(data_size) if data_size else None, batch_size=128, train_split=0.7)
+    print(f"Using mode: {mode}")
+    
+    train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(
+        int(data_size) if data_size else None, 
+        batch_size=128, 
+        train_split=0.7, 
+        mode=mode
+    )
     
     ml_model = model_def.GNNModel(
         input_net_dropout=0.1,
         num_edge_convs=8,
         gnn_step_dropout=0.1,
         classifier_dropout=0.1,
+        in_channels=2 if mode == "stereo" else 1
     )
     
     trained_model, history = model_def.learn(
@@ -111,7 +128,7 @@ def just_train(data_size=None, epochs=25):
         epochs=epochs,
         lr_max=0.0045147568655840575,
         l2_reg=0.0005716387943814013,
-        pos_weight=pos_weight
+        pos_weight=pos_weight,
     )
     
     hf.show_history(history)
@@ -124,7 +141,7 @@ def just_train(data_size=None, epochs=25):
         torch.cuda.empty_cache()
 
 # trains the baseline model, without HPO, for a quick test run
-def just_train_baseline(data_size=None, epochs=50):
+def just_train_baseline(data_size=None, epochs=1):
     hf.set_all_seeds()
     train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(int(data_size) if data_size else None, batch_size=128, train_split=0.7)
 
@@ -148,6 +165,6 @@ def just_train_baseline(data_size=None, epochs=50):
         torch.cuda.empty_cache()
         
 if __name__ == "__main__":
-    main()
+    # main()
     just_train()
-    just_train_baseline()
+    # just_train_baseline()

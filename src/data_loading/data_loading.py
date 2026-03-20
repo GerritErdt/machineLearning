@@ -11,8 +11,10 @@ from src.magicdl import magic
 
 
 class MagicStereoDataset(data.Dataset):
-    def __init__(self, m1, m2, y, train_min, train_max, epsilon=1e-6, num_pixels=1039):
+    def __init__(self, m1, m2, y, train_min, train_max, epsilon=1e-6, num_pixels=1039, mode="stereo"):
         assert m1.shape[0] == m2.shape[0] == y.shape[0], "Mismatch in number of samples between M1, M2 and labels"
+        assert mode in ["stereo", "mono"], "Invalid mode. Expected 'stereo' or 'mono'."
+        self.mode = mode
         
         # type casting to float32 and ensuring only the first num_pixels are used to get rid of empty pixels
         m1 = m1.astype(np.float32)[:, :num_pixels]
@@ -31,40 +33,61 @@ class MagicStereoDataset(data.Dataset):
         # get neighborhood topology and node positions for the camera pixels (same for all samples)
         global_edge_index, global_pos = compute_camera_topology(num_valid_pixels=num_pixels)
 
-        # stack M1 and M2 features together and normalize
-        all_features = torch.stack([transformed_m1, transformed_m2], dim=-1)  
-        all_features = (all_features - sqrt_min) / (sqrt_span + epsilon)
-
         # build all graphs
         self.graphs = []
-        num_samples = transformed_m1.shape[0]
 
-        for idx in range(num_samples):
-            m1_img = transformed_m1[idx]
-            m2_img = transformed_m2[idx]
+        if self.mode == "stereo":
+            all_features = torch.stack([transformed_m1, transformed_m2], dim=-1)
+            all_features = (all_features - sqrt_min) / (sqrt_span + epsilon)
+            num_samples = transformed_m1.shape[0]
 
-            # only use regions where the pixels are actually 'active' (above background intensity) in at least one of the two telescopes
-            mask = (m1_img.abs() > background_intensity) | (m2_img.abs() > background_intensity)
-            
-            # edge case for empty images (there is at least one): we take the pixel with the highest combined intensity to ensure we have at least one node in the graph
-            if not mask.any():
-                max_idx = (m1_img.abs() + m2_img.abs()).argmax()
-                mask[max_idx] = True
+            for idx in range(num_samples):
+                m1_img = transformed_m1[idx]
+                m2_img = transformed_m2[idx]
 
-            active_nodes = mask.nonzero(as_tuple=False).view(-1)
+                mask = (m1_img.abs() > background_intensity) | (m2_img.abs() > background_intensity)
+                if not mask.any():
+                    max_idx = (m1_img.abs() + m2_img.abs()).argmax()
+                    mask[max_idx] = True
 
-            # get the subgraph and add it
-            edge_index, _ = tg_utils.subgraph(active_nodes, global_edge_index, relabel_nodes=True)
+                active_nodes = mask.nonzero(as_tuple=False).view(-1)
+                edge_index, _ = tg_utils.subgraph(active_nodes, global_edge_index, relabel_nodes=True)
 
-            x_sparse = all_features[idx][mask]
-            pos_sparse = global_pos[mask]
+                self.graphs.append(tg_data.Data(
+                    x=all_features[idx][mask],
+                    edge_index=edge_index,
+                    pos=global_pos[mask],
+                    y=labels[idx]
+                ))
 
-            self.graphs.append(tg_data.Data(
-                x=x_sparse,
-                edge_index=edge_index,
-                pos=pos_sparse,
-                y=labels[idx]
-            ))
+        elif self.mode == "mono":
+            num_samples = transformed_m1.shape[0]
+
+            # Erzeuge zufällige Auswahl: 0 für M1, 1 für M2
+            telescope_choice = torch.randint(0, 2, (num_samples,))
+
+            # Wähle die Bilder entsprechend der Maske aus
+            selected_imgs = torch.where(telescope_choice.unsqueeze(1) == 0, transformed_m1, transformed_m2)
+
+            all_features = selected_imgs.unsqueeze(-1)  # Dimension für in_channels=1 hinzufügen
+            all_features = (all_features - sqrt_min) / (sqrt_span + epsilon)
+
+            for idx in range(num_samples):
+                img = selected_imgs[idx]
+
+                mask = img.abs() > background_intensity
+                if not mask.any():
+                    mask[img.abs().argmax()] = True
+
+                active_nodes = mask.nonzero(as_tuple=False).view(-1)
+                edge_index, _ = tg_utils.subgraph(active_nodes, global_edge_index, relabel_nodes=True)
+
+                self.graphs.append(tg_data.Data(
+                    x=all_features[idx][mask],
+                    edge_index=edge_index,
+                    pos=global_pos[mask],
+                    y=labels[idx]  # Labels bleiben unverändert, da wir die Sample-Zahl nicht verdoppeln
+                ))
 
     def __len__(self):
         return len(self.graphs)
@@ -159,7 +182,7 @@ def split_data(p_m1, p_m2, g_m1, g_m2, train_split=0.7, create_HPO_set=False, hp
         return x_m1_train, x_m1_val, x_m1_test, x_m2_train, x_m2_val, x_m2_test, y_train, y_val, y_test
 
 
-def get_stereo_clean_dataset(num_samples=10000, batch_size=128, train_split=0.7, return_HPO_subset=False, fraction_for_hpo=0.4):
+def get_stereo_clean_dataset(num_samples=10000, batch_size=128, train_split=0.7, return_HPO_subset=False, fraction_for_hpo=0.4, mode="stereo"):
     print("Loading and preprocessing data...")
     protons_m1, protons_m2, gammas_m1, gammas_m2 = load_stereo_clean_images(num_samples)
     gc.collect()
@@ -180,13 +203,13 @@ def get_stereo_clean_dataset(num_samples=10000, batch_size=128, train_split=0.7,
     print("Creating  datasets and dataloaders...")
 
     # get datasets from it
-    train_dataset = MagicStereoDataset(m1_train, m2_train, y_train, train_min, train_max)
-    test_dataset = MagicStereoDataset(m1_test, m2_test, y_test, train_min, train_max)
-    val_dataset = MagicStereoDataset(m1_val, m2_val, y_val, train_min, train_max)
-    
+    train_dataset = MagicStereoDataset(m1_train, m2_train, y_train, train_min, train_max, mode=mode)
+    test_dataset = MagicStereoDataset(m1_test, m2_test, y_test, train_min, train_max, mode=mode)
+    val_dataset = MagicStereoDataset(m1_val, m2_val, y_val, train_min, train_max, mode=mode)
+
     if return_HPO_subset:
-        hpo_train_dataset = MagicStereoDataset(hpo_m1_train, hpo_m2_train, y_hpo_train, train_min, train_max)
-        hpo_val_dataset = MagicStereoDataset(hpo_m1_val, hpo_m2_val, y_hpo_val, train_min, train_max)
+        hpo_train_dataset = MagicStereoDataset(hpo_m1_train, hpo_m2_train, y_hpo_train, train_min, train_max, mode=mode)
+        hpo_val_dataset = MagicStereoDataset(hpo_m1_val, hpo_m2_val, y_hpo_val, train_min, train_max, mode=mode)
 
     # create dataloaders from it, needed for torch_geometric
     train_loader = tg_loader.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)

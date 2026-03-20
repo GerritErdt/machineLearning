@@ -141,19 +141,17 @@ def show_history(history, feature_names=None):
     plt.tight_layout()
     plt.show()
 
-
 def show_predictions(model, test_loader, num_samples=12):
     device = next(model.parameters()).device
     model.eval()
     dataset = test_loader.dataset
 
     target_per_category = num_samples // 4
-
     categories = {(0, 0): [], (0, 1): [], (1, 0): [], (1, 1): []}
 
+    # Samples sammeln
     with torch.no_grad():
         for idx in range(len(dataset)):
-            # Vorzeitiger Abbruch, wenn alle Quoten erfüllt sind
             if all(len(items) >= target_per_category for items in categories.values()):
                 break
 
@@ -188,49 +186,66 @@ def show_predictions(model, test_loader, num_samples=12):
 
     named_predictions = []
 
+    # Visualisierung
     with torch.no_grad():
         for idx, prob, pred_class, true_class in selected_samples:
             data = dataset[idx]
 
             pred_name = dataset.get_label_name(pred_class)
             label_name = dataset.get_label_name(true_class)
-
             named_predictions.append((prob, pred_name, label_name))
 
             pos_np = data.pos.cpu().numpy()
             edge_index_np = data.edge_index.cpu().numpy()
 
-            signal_m1 = data.x[:, 0].cpu().numpy()
-            signal_m2 = data.x[:, 1].cpu().numpy()
-            signal_diff = signal_m1 - signal_m2
-
-            vmin = min(signal_m1.min(), signal_m2.min())
-            vmax = max(signal_m1.max(), signal_m2.max())
-
-            fig, axes = plt.subplots(1, 3, figsize=(24, 8))
+            # Kanalanzahl auslesen (1 für Mono, 2 für Stereo)
+            num_channels = data.x.shape[1]
 
             title_color = "green" if pred_class == true_class else "red"
+            suptitle_text = (f"Sample {idx} | Output: {prob:.4f} | "
+                             f"Prediction: {pred_name} | True Label: {label_name}")
 
-            fig.suptitle(
-                f"Sample {idx} | Output: {prob:.4f} | "
-                f"Prediction: {pred_name} | True Label: {label_name}",
-                fontsize=18, fontweight='bold', color=title_color
-            )
+            if num_channels == 2:
+                # Stereo-Darstellung (3 Subplots)
+                fig, axes = plt.subplots(1, 3, figsize=(24, 8))
+                fig.suptitle(suptitle_text, fontsize=18, fontweight='bold', color=title_color)
 
-            scatter_m1 = draw_single_graph(axes[0], pos_np, edge_index_np, signal_m1,
-                                           "Channel 0 (M1)", vmin, vmax)
-            draw_single_graph(axes[1], pos_np, edge_index_np, signal_m2,
-                              "Channel 1 (M2)", vmin, vmax)
+                signal_m1 = data.x[:, 0].cpu().numpy()
+                signal_m2 = data.x[:, 1].cpu().numpy()
+                signal_diff = signal_m1 - signal_m2
 
-            vmax_diff = np.max(np.abs(signal_diff))
-            vmax_diff = vmax_diff if vmax_diff > 0 else 1.0
-            scatter_diff = draw_single_graph(axes[2], pos_np, edge_index_np, signal_diff,
-                                             "Difference (M1 - M2)", -vmax_diff, vmax_diff, cmap='coolwarm')
+                vmin = min(signal_m1.min(), signal_m2.min())
+                vmax = max(signal_m1.max(), signal_m2.max())
 
-            fig.colorbar(scatter_m1, ax=axes[:2], orientation='vertical', fraction=0.02, pad=0.04,
-                         label='Signal intensity')
-            fig.colorbar(scatter_diff, ax=axes[2], orientation='vertical', fraction=0.04, pad=0.04,
-                         label='Signal Difference')
+                scatter_m1 = draw_single_graph(axes[0], pos_np, edge_index_np, signal_m1,
+                                               "Channel 0 (M1)", vmin, vmax)
+                draw_single_graph(axes[1], pos_np, edge_index_np, signal_m2,
+                                  "Channel 1 (M2)", vmin, vmax)
+
+                vmax_diff = np.max(np.abs(signal_diff))
+                vmax_diff = vmax_diff if vmax_diff > 0 else 1.0
+                scatter_diff = draw_single_graph(axes[2], pos_np, edge_index_np, signal_diff,
+                                                 "Difference (M1 - M2)", -vmax_diff, vmax_diff, cmap='coolwarm')
+
+                fig.colorbar(scatter_m1, ax=axes[:2], orientation='vertical', fraction=0.02, pad=0.04,
+                             label='Signal intensity')
+                fig.colorbar(scatter_diff, ax=axes[2], orientation='vertical', fraction=0.04, pad=0.04,
+                             label='Signal Difference')
+
+            else:
+                # Mono-Darstellung (1 Subplot)
+                fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+                fig.suptitle(suptitle_text, fontsize=14, fontweight='bold', color=title_color)
+
+                signal_mono = data.x[:, 0].cpu().numpy()
+                vmin = signal_mono.min()
+                vmax = signal_mono.max()
+
+                scatter_mono = draw_single_graph(ax, pos_np, edge_index_np, signal_mono,
+                                                 "Channel 0 (Mono)", vmin, vmax)
+
+                fig.colorbar(scatter_mono, ax=ax, orientation='vertical', fraction=0.04, pad=0.04,
+                             label='Signal intensity')
 
             plt.show()
 

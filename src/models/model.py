@@ -26,6 +26,8 @@ class GNNModel(nn.Module):
                 # no dropout, as there is no additional layer to restore information here
         )
         
+        self.jumping_knowledge_dropout = nn.Dropout(0.25) # static medium-strong dropout, to prevent lazy learning
+        
         # GNN-layers
         self.convs = nn.ModuleList() # GraphConv-layers
         self.projs = nn.ModuleList() # re-projection layers
@@ -88,7 +90,7 @@ class GNNModel(nn.Module):
                         nn.init.zeros_(m.bias)
         
         # print network statistics
-        print(f"Initialized GNNModel with: input_net_dropout={input_net_dropout:<4.2f}, num_edge_convs={num_edge_convs:<2}, "\
+        print(f"Initialized GNNModel with: in_channels={in_channels}, input_net_dropout={input_net_dropout:<4.2f}, num_edge_convs={num_edge_convs:<2}, "\
               f"gnn_step_dropout={gnn_step_dropout:<4.2f}, classifier_dropout={classifier_dropout:<4.2f}, internal_dimensions={internal_dimensions:<3}. Trainable parameters: {sum(p.numel() for p in self.parameters() if p.requires_grad)}", flush=True)
     
     def _init_weights(self, module): 
@@ -111,8 +113,8 @@ class GNNModel(nn.Module):
         x = self.input_net(x)
         
         # jumping knowledge of initial features against over-smoothing
-        x_input_max = gnn.global_max_pool(x, batch, size=num_graphs)
-        x_input_mean = gnn.global_mean_pool(x, batch, size=num_graphs)
+        x_input_max = self.jumping_knowledge_dropout(gnn.global_max_pool(x, batch, size=num_graphs))
+        x_input_mean = self.jumping_knowledge_dropout(gnn.global_mean_pool(x, batch, size=num_graphs))
         
         # GNN-layers with residual connections
         for conv, proj, norm in zip(self.convs, self.projs, self.norms):
@@ -341,7 +343,8 @@ def learn(model, train_loader, val_loader, test_loader, epochs, lr_max, l2_reg, 
     
     return model, history
 
-def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight):
+def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight, mode):
+    in_channels = 2 if mode == "stereo" else 1
     
     config = {
         # model parameters
@@ -359,7 +362,8 @@ def objective(trial, train_loader, val_loader, test_loader, epochs, pos_weight):
         input_net_dropout=config["input_net_dropout"],
         num_edge_convs=config["num_edge_convs"],
         gnn_step_dropout=config["gnn_step_dropout"],
-        classifier_dropout=config["classifier_dropout"]
+        classifier_dropout=config["classifier_dropout"],
+        in_channels=in_channels
     )
     
     trained_model, history = learn(
