@@ -7,7 +7,7 @@ import src.helper_functions.helper_functions as hf
 import gc
 
 # performs HPO and a final training
-def main(trials=3, trial_epochs=1, fraction_for_hpo=0.35, final_data_size=None, mode="stereo"):
+def main(trials=50, trial_epochs=30, fraction_for_hpo=0.35, final_data_size=None, mode="stereo"):
     hf.set_all_seeds()
     print(f"Using mode: {mode}")
     
@@ -20,7 +20,7 @@ def main(trials=3, trial_epochs=1, fraction_for_hpo=0.35, final_data_size=None, 
         mode=mode
     ) 
     warmup_epochs = int(trial_epochs * 0.4)  # the LR scheduler takes some time to ramp up, so we give it a warmup period before pruning can kick in
-    final_epochs = max(1, int(2 * trial_epochs * len(hpo_train_loader) / len(train_loader)))  # empirically found, provides a good scale-up
+    final_epochs = max(1, int(2.2 * trial_epochs * len(hpo_train_loader) / len(train_loader)))  # empirically found, provides a good scale-up
     print(f"Using {final_epochs} epochs for final training based on {trial_epochs} trial epochs and dataset size ratio.")
     
     # initialize Optuna study with TPE sampler and Hyperband pruner
@@ -101,7 +101,7 @@ def main(trials=3, trial_epochs=1, fraction_for_hpo=0.35, final_data_size=None, 
         torch.cuda.empty_cache()
 
 # trains the current model with some fixed hyperparameters, without HPO, for a quick test run
-def just_train(data_size=5e4, epochs=5, mode="stereo"):
+def just_train(data_size=None, epochs=30, mode="stereo"):
     hf.set_all_seeds()
     print(f"Using mode: {mode}")
     
@@ -141,7 +141,7 @@ def just_train(data_size=5e4, epochs=5, mode="stereo"):
         torch.cuda.empty_cache()
 
 # trains the baseline model, without HPO, for a quick test run
-def just_train_baseline(data_size=None, epochs=1):
+def just_train_baseline(data_size=None, epochs=30):
     hf.set_all_seeds()
     train_loader, val_loader, test_loader, pos_weight = dl.get_stereo_clean_dataset(int(data_size) if data_size else None, batch_size=128, train_split=0.7)
 

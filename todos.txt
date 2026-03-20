@@ -1,2 +1,1 @@
-- baseline model 10 epochs fix 
-- baseline model auroc 0.61 fix
+- improved model jk dropout
