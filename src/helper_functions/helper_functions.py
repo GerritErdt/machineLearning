@@ -149,7 +149,6 @@ def show_predictions(model, test_loader, num_samples=12):
     target_per_category = num_samples // 4
     categories = {(0, 0): [], (0, 1): [], (1, 0): [], (1, 1): []}
 
-    # Samples sammeln
     with torch.no_grad():
         for idx in range(len(dataset)):
             if all(len(items) >= target_per_category for items in categories.values()):
@@ -186,7 +185,6 @@ def show_predictions(model, test_loader, num_samples=12):
 
     named_predictions = []
 
-    # Visualisierung
     with torch.no_grad():
         for idx, prob, pred_class, true_class in selected_samples:
             data = dataset[idx]
@@ -198,7 +196,6 @@ def show_predictions(model, test_loader, num_samples=12):
             pos_np = data.pos.cpu().numpy()
             edge_index_np = data.edge_index.cpu().numpy()
 
-            # Kanalanzahl auslesen (1 für Mono, 2 für Stereo)
             num_channels = data.x.shape[1]
 
             title_color = "green" if pred_class == true_class else "red"
@@ -206,7 +203,6 @@ def show_predictions(model, test_loader, num_samples=12):
                              f"Prediction: {pred_name} | True Label: {label_name}")
 
             if num_channels == 2:
-                # Stereo-Darstellung (3 Subplots)
                 fig, axes = plt.subplots(1, 3, figsize=(24, 8))
                 fig.suptitle(suptitle_text, fontsize=18, fontweight='bold', color=title_color)
 
@@ -233,7 +229,6 @@ def show_predictions(model, test_loader, num_samples=12):
                              label='Signal Difference')
 
             else:
-                # Mono-Darstellung (1 Subplot)
                 fig, ax = plt.subplots(1, 1, figsize=(8, 8))
                 fig.suptitle(suptitle_text, fontsize=14, fontweight='bold', color=title_color)
 

@@ -63,13 +63,13 @@ class MagicStereoDataset(data.Dataset):
         elif self.mode == "mono":
             num_samples = transformed_m1.shape[0]
 
-            # Erzeuge zufällige Auswahl: 0 für M1, 1 für M2
+            # Generate random sampling of m1 nad m2
             telescope_choice = torch.randint(0, 2, (num_samples,))
 
-            # Wähle die Bilder entsprechend der Maske aus
+            # apply mask
             selected_imgs = torch.where(telescope_choice.unsqueeze(1) == 0, transformed_m1, transformed_m2)
 
-            all_features = selected_imgs.unsqueeze(-1)  # Dimension für in_channels=1 hinzufügen
+            all_features = selected_imgs.unsqueeze(-1)  
             all_features = (all_features - sqrt_min) / (sqrt_span + epsilon)
 
             for idx in range(num_samples):
@@ -86,7 +86,7 @@ class MagicStereoDataset(data.Dataset):
                     x=all_features[idx][mask],
                     edge_index=edge_index,
                     pos=global_pos[mask],
-                    y=labels[idx]  # Labels bleiben unverändert, da wir die Sample-Zahl nicht verdoppeln
+                    y=labels[idx]  
                 ))
 
     def __len__(self):
